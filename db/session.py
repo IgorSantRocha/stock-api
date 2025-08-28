@@ -22,13 +22,13 @@ SessionLocal_psql = sessionmaker(
 )
 
 
-engine_212 = create_engine(
-    str(settings.SQLALCHEMY_DATABASE_URI_212), pool_pre_ping=True)
+engine_ag_ws = create_engine(
+    str(settings.SQLALCHEMY_DATABASE_URI_ag_ws), pool_pre_ping=True)
 SQLAlchemyInstrumentor().instrument(
-    engine=engine_212
+    engine=engine_ag_ws
 )
-SessionLocal_212 = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine_212)
+SessionLocal_ag_ws = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine_ag_ws)
 
 
 engine_211 = create_engine(

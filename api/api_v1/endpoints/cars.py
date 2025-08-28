@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/", response_model=List[schemas.Car])
 async def read_cars(
-        db: Session = Depends(deps.get_db),
+        db: Session = Depends(deps.get_db_psql),
         skip: int = 0,
         limit: int = 100,
 ) -> Any:
@@ -27,7 +27,7 @@ async def read_cars(
 @router.post("/", response_model=schemas.Car)
 async def create_car(
         *,
-        db: Session = Depends(deps.get_db),
+        db: Session = Depends(deps.get_db_psql),
         car_in: schemas.CarCreate,
 ) -> Any:
     """
@@ -40,7 +40,7 @@ async def create_car(
 @router.delete(path="/{id}", response_model=schemas.Car)
 async def delete_car(
         *,
-        db: Session = Depends(deps.get_db),
+        db: Session = Depends(deps.get_db_psql),
         id: int,
 ) -> Any:
     """

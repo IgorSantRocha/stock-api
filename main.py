@@ -8,17 +8,18 @@ from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
+from core.logging_config import setup_logging
+from core.logging_config import RequestLoggingMiddleware
 
 
 def api_factory():
     app = FastAPI(title=settings.PROJECT_NAME,
-                  root_path="/Template",
+                  root_path=settings.ROOT_PATH,
                   version='0.0.1',
-                  description='Template para criação de APIs',
+                  description=settings.DESCRIPTION,
                   )
-    logging.config.dictConfig(settings.LOGGING_CONFIG)
-    LoggingInstrumentor().instrument()
-    HTTPXClientInstrumentor().instrument()
+    app.add_middleware(RequestLoggingMiddleware)
+    setup_logging()
 
     # Set all CORS enabled origins
     if settings.BACKEND_CORS_ORIGINS:
@@ -37,12 +38,6 @@ def api_factory():
 
 
 app = api_factory()
-
-
-@app.get(f"{app.root_path}/", description='Resposta somente para validar se a API subiu corretamente. Sem nenhuma conexão com o banco de dados.',
-         summary='Valida se API está no ar')
-def get_index():
-    return {'msg': 'API está no ar!'}
 
 
 @app.get(f"{app.root_path}/docs", include_in_schema=False)
@@ -65,9 +60,9 @@ async def get_custom_openapi():
 
 
 def run():
-    log_config = uvicorn.config.LOGGING_CONFIG
-    log_config["formatters"]["access"]["fmt"] = settings.LOGGING_CONFIG["formatters"]["standard"]["format"]
-    uvicorn.run("main:app", log_config=log_config, reload=True)
+    # log_config = uvicorn.config.LOGGING_CONFIG
+    # log_config["formatters"]["access"]["fmt"] = settings.LOGGING_CONFIG["formatters"]["standard"]["format"]
+    uvicorn.run("main:app", reload=True)
 
 
 if __name__ == "__main__":
