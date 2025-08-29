@@ -17,6 +17,10 @@ def api_factory():
                   root_path=settings.ROOT_PATH,
                   version='0.0.1',
                   description=settings.DESCRIPTION,
+                  contact={
+                      "name": "Igor Rocha",
+                      "email": "igor.rocha@c-trends.com.br",
+                  }
                   )
     app.add_middleware(RequestLoggingMiddleware)
     setup_logging()
