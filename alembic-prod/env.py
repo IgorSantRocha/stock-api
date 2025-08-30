@@ -48,7 +48,7 @@ def include_name(name: str | None, type_: str, parent_names: dict) -> bool:
 
 def _get_url() -> str:
     url = config.get_main_option("sqlalchemy.url")
-    return url or 'postgresql://sa:Profeta_01@192.168.0.220:5432/arancia_db'
+    return url or settings.ALEMBIC_URI_H
 
 
 def run_migrations_offline() -> None:
