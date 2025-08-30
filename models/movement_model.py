@@ -37,7 +37,6 @@ class Movement(Base):
 
     # Relacionamentos
     item = relationship("Item")
-    product = relationship("Product")
     origin = relationship("OrderOrigin", lazy="joined")
 
     from_location = relationship(
