@@ -61,7 +61,7 @@ class MovementService:
 
         logger.info("Criando novo movement...")
         movement_in = MovementCreate(
-            movement_type=payload.movement_type.value,
+            movement_type=payload.movement_type,
             item_id=_item.id,
             order_origin_id=payload.order_origin_id,
             from_location_id=payload.from_location_id,

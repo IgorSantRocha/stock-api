@@ -15,7 +15,7 @@ class Item(Base):
         "logistic_stock_product.id"), nullable=True, index=True)
 
     serial = Column(String, unique=True, index=True, nullable=True)
-    status = Column(String, default="ATIVO")
+    status = Column(String, nullable=False, index=True)
     location_id = Column(Integer, ForeignKey(
         "logistica_groupaditionalinformation.id"), nullable=False, index=True)
     extra_info = Column(JSON)

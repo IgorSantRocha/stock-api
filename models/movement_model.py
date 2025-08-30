@@ -5,14 +5,12 @@ from sqlalchemy.orm import relationship
 import enum
 from db.base_class import Base
 
-from schemas.movement_schema import MovementType
-
 
 class Movement(Base):
     __tablename__ = "logistic_stock_movement"
 
     id = Column(Integer, primary_key=True)
-    movement_type = Column(Enum(MovementType), nullable=False, index=True)
+    movement_type = Column(String, nullable=False, index=True)
 
     item_id = Column(Integer, ForeignKey("logistic_stock_item.id"),
                      nullable=False, index=True)
