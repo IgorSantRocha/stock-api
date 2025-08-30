@@ -1,13 +1,29 @@
+import enum
 from typing import Optional, Any
 from pydantic import BaseModel, Field
 
 
+class ItemStatus(enum.Enum):
+    # No depósito (Usado em casos de produtos que estão em algum depósito nosso)
+    IN_DEPOT = "IN_DEPOT"
+    # Em trânsito (Usado em casos de produtos que estão em posse do técnico/Transportadora)
+    IN_TRANSIT = "IN_TRANSIT"
+    # Com o cliente (Usado em casos onde o item está em posse do contratante ou um de seus representantes)
+    WITH_CLIENT = "WITH_CLIENT"
+    # Com o cliente final, ou seja, instalado.
+    WITH_CUSTOMER = "WITH_CUSTOMER"
+
+
 class ItemBase(BaseModel):
     product_id: Optional[int]
-    serial: Optional[str] = None
-    status: str = "ATIVO"
+    serial: str
+    status: ItemStatus = Field(
+        ...,
+        description=f"Status atual do item. Opções: {[e.value for e in ItemStatus]}",
+        example=ItemStatus.IN_DEPOT
+    )
     extra_info: Optional[dict[str, Any]] = None
-
+    location_id: int
     # Pydantic v2
     model_config = {"from_attributes": True}
     # Se estiver em Pydantic v1, use:

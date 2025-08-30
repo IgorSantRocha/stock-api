@@ -12,8 +12,6 @@ class MovementType(enum.Enum):
     TRANSFER = "TRANSFER"
     ADJUST = "ADJUST"
     RETURN = "RETURN"
-    PICK = "PICK"
-    PACK = "PACK"
 
 
 class Movement(Base):

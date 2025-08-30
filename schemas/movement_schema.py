@@ -34,7 +34,7 @@ class MovementPayload(BaseModel):
     order_number: Optional[str] = Field(
         None,
         description="Número da ordem associada à movimentação",
-        example="ORD-2025-000123"
+        example="ORD2025000123"
     )
     volume_number: Optional[int] = Field(
         default=None,
@@ -47,16 +47,15 @@ class MovementPayload(BaseModel):
         description="Identificador do kit associado à movimentação",
         example="KIT-789"
     )
-
-    extra_info: Optional[Dict[str, Any]] = Field(
-        None,
-        description="Metadados extras da movimentação em formato JSON",
-        example={"reason": "ajuste inventário", "user": "rafael"}
-    )
     created_by: Optional[str] = Field(
         None,
         description="Usuário ou sistema responsável pela criação do registro",
-        example="sistema_importacao"
+        example="ARC0001"
+    )
+    extra_info: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Metadados extras da movimentação em formato JSON",
+        example={"reason": "Ajuste inventário", "carrier_name": "Logan"}
     )
 
 
