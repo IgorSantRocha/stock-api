@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class ItemBase(BaseModel):
-    product_id: int
+    product_id: Optional[int]
     serial: Optional[str] = None
     status: str = "ATIVO"
     extra_info: Optional[dict[str, Any]] = None
@@ -19,7 +19,7 @@ class ItemCreate(ItemBase):
     pass
 
 
-class ItemUpdate(ItemBase):
+class ItemUpdate(BaseModel):
     pass  # se quiser "PATCH", deixe todos os campos opcionais aqui
 
 

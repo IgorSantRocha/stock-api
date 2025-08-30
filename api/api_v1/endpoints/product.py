@@ -26,6 +26,19 @@ async def read_products(
     logger.info("Consultando products...")
     return await product.get_multi(db=db, skip=skip, limit=limit)
 
+@router.get("/{client}", response_model=List[ProductInDbBase])
+async def read_products(
+        client:str,
+        db: Session = Depends(deps.get_db_psql)
+) -> Any:
+    """
+    Consulta todas as produtos possíveis
+    """
+    logger.info("Consultando products por client...")
+
+    _products = await product.get_multi_filter(db=db, filterby="client_name", filter=client)
+    return _products
+
 
 @router.post("/", response_model=ProductInDbBase)
 async def create_product(
@@ -39,11 +52,10 @@ async def create_product(
     # verifica se o produto já existe, se existir, ignora a criação
     existing_product = await product.get_last_by_filters(
         db=db,
-        filters=[
-            {"field": "sku", "operator": "=", "value": product_in.sku},
-            {"field": "description", "operator": "=",
-                "value": product_in.description},
-        ],
+        filters={
+            'sku': {'operator': '==', 'value': product_in.sku},
+            'description': {'operator': '==', 'value': product_in.description}
+        }
     )
     if existing_product:
         logger.info("Produto já existe, ignorando criação...")

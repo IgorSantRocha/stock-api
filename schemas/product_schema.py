@@ -4,11 +4,15 @@ from pydantic import BaseModel, Field
 
 class ProductBase(BaseModel):
     sku: str = Field(..., description="Código único do produto (SKU). Pode receber o MATNR",
-                     example="605043, POS1234")
+                     example="605043")
     description: str = Field(..., description="Descrição detalhada ou modelo do produto",
                              example="PinPad Verifone VX820")
     category: Optional[str] = Field(
         None, description="Categoria do produto (ex.: POS, Modem, PinPad)", example="POS")
+
+    client_name: str = Field(...,
+                             description="Nome do cliente associado ao produto",
+                             example="C-Trends")
     extra_info: Optional[dict[str, Any]] = Field(
         None,
         description="Informações adicionais em formato JSON",

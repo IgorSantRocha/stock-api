@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, UniqueConstraint, Index
+    Column, DateTime, Integer, String, UniqueConstraint, Index, func
 )
 from db.base_class import Base
 
@@ -8,6 +8,7 @@ class OrderOrigin(Base):
     __tablename__ = "logistic_stock_order_origin"
 
     id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     # Cliente final (Cielo, Claro, etc. — se quiser separar de origin_name)
     client_name = Column(String(100), nullable=True, index=True)
