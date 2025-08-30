@@ -1,4 +1,4 @@
-from crud.baseSync import CRUDBase
+from crud.baseAsync import CRUDBase
 from models.movement_model import Movement as Model
 from schemas.movement_schema import MovementCreate as SchemaCreate, MovementUpdate as SchemaUpdate
 

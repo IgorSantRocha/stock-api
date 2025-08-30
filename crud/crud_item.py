@@ -1,4 +1,4 @@
-from crud.baseSync import CRUDBase
+from crud.baseAsync import CRUDBase
 from models.item_model import Item
 from schemas.item_schema import ItemCreate, ItemUpdate
 
