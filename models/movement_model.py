@@ -25,7 +25,7 @@ class Movement(Base):
     item_id = Column(Integer, ForeignKey("logistic_stock_item.id"),
                      nullable=False, index=True)
     product_id = Column(Integer, ForeignKey(
-        "logistic_stock_product.id"), nullable=False, index=True)
+        "logistic_stock_product.id"), nullable=True, index=True)
 
     from_location_id = Column(Integer, ForeignKey(
         "logistica_groupaditionalinformation.id"))
