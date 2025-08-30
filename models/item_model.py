@@ -16,5 +16,7 @@ class Item(Base):
     # pode ser null p/ itens sem serial
     serial = Column(String, unique=True, index=True, nullable=True)
     status = Column(String, default="ATIVO")
+    location_id = Column(Integer, ForeignKey(
+        "logistica_groupaditionalinformation.id"), nullable=True, index=True)
     extra_info = Column(JSON)
     product = relationship("Product")
