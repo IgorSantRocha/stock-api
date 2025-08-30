@@ -12,7 +12,7 @@ class MovementBase(BaseModel):
     from_location_id: Optional[int] = None
     to_location_id: Optional[int] = None
 
-    order_origin: Optional[str] = None       # ex.: "CIELO", "INTELIPOST"
+    order_origin_id: Optional[int] = None
     order_number: Optional[str] = None
     volume_number: Optional[int] = Field(default=None, ge=0)
     kit_number: Optional[str] = None
