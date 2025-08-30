@@ -1,14 +1,12 @@
 from typing import Optional
 from pydantic import BaseModel
-from models.location_model import LocationType
+
 
 # Se já tiver o Enum no seu módulo de modelos, importe-o:
 # from .models import LocationType
 
 
 class LocationBase(BaseModel):
-    type: Optional[LocationType] = None
-
     nome: Optional[str] = None
     cod_iata: Optional[str] = None
     sales_channel: Optional[str] = None

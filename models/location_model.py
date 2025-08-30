@@ -7,20 +7,10 @@ from db.base_class import Base
 from sqlalchemy.orm import declarative_base
 
 
-class LocationType(enum.Enum):
-    CD = "CD"
-    PA = "PA"
-    TRANSITO = "TRANSITO"
-    CLIENTE = "CLIENTE"
-
-
 class Location(Base):
     __tablename__ = "logistica_groupaditionalinformation"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    # Opcional: tipo de local (CD/PA/TRANSITO/CLIENTE)
-    type = Column(Enum(LocationType), nullable=True, index=True)
 
     # Campos espelhando o Django GroupAditionalInformation
     nome = Column(String(100), nullable=True)

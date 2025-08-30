@@ -13,10 +13,11 @@ class Item(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     product_id = Column(Integer, ForeignKey(
         "logistic_stock_product.id"), nullable=True, index=True)
-    # pode ser null p/ itens sem serial
+
     serial = Column(String, unique=True, index=True, nullable=True)
     status = Column(String, default="ATIVO")
     location_id = Column(Integer, ForeignKey(
-        "logistica_groupaditionalinformation.id"), nullable=True, index=True)
+        "logistica_groupaditionalinformation.id"), nullable=False, index=True)
     extra_info = Column(JSON)
     product = relationship("Product")
+    location = relationship("Location")

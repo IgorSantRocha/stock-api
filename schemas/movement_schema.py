@@ -1,13 +1,21 @@
+import enum
 from typing import Optional, Any, Dict
 from datetime import datetime
 from pydantic import BaseModel, Field
-from models.movement_model import MovementType
-from schemas.item_schema import ItemCreate
+from schemas.item_schema import ItemPayload
 from schemas.product_schema import ProductCreate
 
 
+class MovementType(enum.Enum):
+    IN = "IN"
+    DELIVERY = "DELIVERY"  # entrega
+    RETURN = "RETURN"  # reversa
+    TRANSFER = "TRANSFER"
+    ADJUST = "ADJUST"
+
+
 class MovementPayload(BaseModel):
-    item: ItemCreate
+    item: ItemPayload
 
     movement_type: MovementType = Field(
         ...,
@@ -55,7 +63,8 @@ class MovementPayload(BaseModel):
     extra_info: Optional[Dict[str, Any]] = Field(
         None,
         description="Metadados extras da movimentação em formato JSON",
-        example={"reason": "Ajuste inventário", "carrier_name": "Logan"}
+        example={"original_code": "209",
+                 "original_message": "VOLUME RECEBIDO PARA CONFERENCIA"}
     )
 
 

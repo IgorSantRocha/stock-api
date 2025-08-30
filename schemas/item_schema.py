@@ -14,6 +14,12 @@ class ItemStatus(enum.Enum):
     WITH_CUSTOMER = "WITH_CUSTOMER"
 
 
+class ItemPayload(BaseModel):
+    product_id: Optional[int] = None
+    serial: str
+    extra_info: Optional[dict[str, Any]] = None
+
+
 class ItemBase(BaseModel):
     product_id: Optional[int]
     serial: str
@@ -36,7 +42,12 @@ class ItemCreate(ItemBase):
 
 
 class ItemUpdate(BaseModel):
-    pass  # se quiser "PATCH", deixe todos os campos opcionais aqui
+    status: str = Field(
+        ...,
+        description=f"Status atual do item. Opções: {[e.value for e in ItemStatus]}",
+        example=ItemStatus.IN_DEPOT
+    )
+    location_id: int
 
 
 class ItemInDbBase(ItemBase):

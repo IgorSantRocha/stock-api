@@ -5,13 +5,7 @@ from sqlalchemy.orm import relationship
 import enum
 from db.base_class import Base
 
-
-class MovementType(enum.Enum):
-    IN = "IN"
-    OUT = "OUT"
-    TRANSFER = "TRANSFER"
-    ADJUST = "ADJUST"
-    RETURN = "RETURN"
+from schemas.movement_schema import MovementType
 
 
 class Movement(Base):
@@ -22,8 +16,6 @@ class Movement(Base):
 
     item_id = Column(Integer, ForeignKey("logistic_stock_item.id"),
                      nullable=False, index=True)
-    product_id = Column(Integer, ForeignKey(
-        "logistic_stock_product.id"), nullable=True, index=True)
 
     # NOVO: FK para origem normalizada
     order_origin_id = Column(Integer, ForeignKey(
