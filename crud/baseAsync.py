@@ -12,7 +12,7 @@ CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
-class CRUDBaseAsync(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
+class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
@@ -24,21 +24,24 @@ class CRUDBaseAsync(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def get_first_by_filter(
         self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str
     ) -> Optional[ModelType]:
-        stmt = select(self.model).where(getattr(self.model, filterby) == filter).order_by(getattr(self.model, order_by))
+        stmt = select(self.model).where(getattr(self.model, filterby)
+                                        == filter).order_by(getattr(self.model, order_by))
         result = await db.execute(stmt)
         return result.scalars().first()
 
     async def get_multi(
         self, db: AsyncSession, *, skip: int = 0, limit: int = 100, order_by: str = "id"
     ) -> List[ModelType]:
-        stmt = select(self.model).order_by(getattr(self.model, order_by)).offset(skip).limit(limit)
+        stmt = select(self.model).order_by(
+            getattr(self.model, order_by)).offset(skip).limit(limit)
         result = await db.execute(stmt)
         return result.scalars().all()
 
     async def get_multi_filter(
         self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str
     ) -> List[ModelType]:
-        stmt = select(self.model).where(getattr(self.model, filterby) == filter).order_by(getattr(self.model, order_by))
+        stmt = select(self.model).where(getattr(self.model, filterby)
+                                        == filter).order_by(getattr(self.model, order_by))
         result = await db.execute(stmt)
         return result.scalars().all()
 
@@ -121,7 +124,8 @@ class CRUDBaseAsync(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db_obj: ModelType,
         obj_in: Union[UpdateSchemaType, Dict[str, Any]]
     ) -> ModelType:
-        update_data = obj_in if isinstance(obj_in, dict) else obj_in.dict(exclude_unset=True)
+        update_data = obj_in if isinstance(
+            obj_in, dict) else obj_in.dict(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_obj, field, value)
         await db.commit()
@@ -137,9 +141,11 @@ class CRUDBaseAsync(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     ) -> List[ModelType]:
         updated_objs = []
         for obj_in in objs_in:
-            data = obj_in if isinstance(obj_in, dict) else obj_in.dict(exclude_unset=True)
+            data = obj_in if isinstance(
+                obj_in, dict) else obj_in.dict(exclude_unset=True)
             filtro_valor = data[filtro]
-            stmt = select(self.model).where(getattr(self.model, filtro) == filtro_valor)
+            stmt = select(self.model).where(
+                getattr(self.model, filtro) == filtro_valor)
             result = await db.execute(stmt)
             db_obj = result.scalars().first()
             if db_obj:
