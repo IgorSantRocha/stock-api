@@ -13,6 +13,11 @@ class ProductBase(BaseModel):
     client_name: str = Field(...,
                              description="Nome do cliente associado ao produto",
                              example="C-Trends")
+
+    created_by: str = Field(...,
+                            description="Username/Sysname de criação",
+                            example="ARC000X")
+
     extra_info: Optional[dict[str, Any]] = Field(
         None,
         description="Informações adicionais em formato JSON",

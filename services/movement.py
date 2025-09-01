@@ -80,7 +80,8 @@ class MovementService:
                             category=result['ZTIPO'],
                             client_name='cielo',
                             description=result['SHTXT'],
-                            sku=result['MATNR']
+                            sku=result['MATNR'],
+                            created_by='SAP'
                         )
                         _product = await product.create(db=db, obj_in=product_in)
 

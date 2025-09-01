@@ -1,7 +1,7 @@
 from typing import Any, List
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from crud.crud_product import product
@@ -60,10 +60,37 @@ async def create_product(
     )
     if existing_product:
         logger.info("Produto já existe, ignorando criação...")
-        return existing_product
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f'Já existe um produto cadastrado com esse sku {product_in.sku}'
+        )
 
     logger.info("Criando novo product...")
     _product = await product.create(db=db, obj_in=product_in)
+    return _product
+
+
+@router.put(path="/{id}", response_model=ProductInDbBase)
+async def put_product(
+        *,
+        db: Session = Depends(deps.get_db_psql),
+        id: int,
+        payload: ProductUpdate
+) -> Any:
+    """
+    # Atualiza informações de um produto existente
+    ### CUIDADO: Essa ação é irreversível!
+    """
+    _product = await product.get(db=db, id=id)
+    if not _product:
+        raise HTTPException(status_code=404, detail="product not found")
+
+    if _product.created_by and not _product.created_by.startswith('ARC'):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Não é permitido alterar este produto")
+
+    logger.info("Deletando nova product...")
+    _product = await product.update(db=db, db_obj=_product, obj_in=payload)
     return _product
 
 
