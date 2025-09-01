@@ -15,13 +15,13 @@ class ItemStatus(enum.Enum):
 
 
 class ItemPayload(BaseModel):
-    product_id: Optional[int] = None
+    product_id: int
     serial: str
     extra_info: Optional[dict[str, Any]] = None
 
 
 class ItemBase(BaseModel):
-    product_id: Optional[int]
+    product_id: int
     serial: str
     status: ItemStatus = Field(
         ...,

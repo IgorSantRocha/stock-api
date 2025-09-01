@@ -15,4 +15,5 @@ class Product(Base):
     description = Column(String, nullable=False, index=True)
     category = Column(String, index=True)
     client_name = Column(String, index=True)
+    created_by = Column(String),
     extra_info = Column(JSON)

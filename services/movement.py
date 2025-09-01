@@ -1,10 +1,11 @@
 from typing import Any, List
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from core.request import RequestClient
 
-from crud.crud_movement import movement
+from crud.crud_product import product
 from crud.crud_movement import movement
 from crud.crud_item import item
 
@@ -34,6 +35,7 @@ class MovementService:
 
     async def create_movement(self, db: Session, payload: MovementPayload) -> ItemInDbBase:
         """
+        0. Se o product_id do item estiver como zero e o cliente for Cielo. Tento localizar o produto, se não conseguir, retorno um erro.
         1. Verifica se o item já existe, se não existir, cria o item
         2. Cria o movimento
         3. Atualiza o location e o status do item de acordo com o movimento
@@ -47,7 +49,50 @@ class MovementService:
             filters={
                 'serial': {'operator': '==', 'value': payload.item.serial}
             })
+
         if not _item:
+            if payload.item.product_id == 0:
+                if payload.client_name != 'cielo':
+                    raise HTTPException(
+                        status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                        detail='Para este cliente, é necessário informar o produto'
+                    )
+                # Vou tentar localizar o serial na consulta síncrona da Cielo e pegar as informações do produto
+                request_data = {"SERGE": payload.item.serial}
+
+                request = RequestClient(
+                    method='POST',
+                    headers={
+                        "Content-Type": 'application/json'},
+                    request_data=request_data,
+                    url='http://192.168.0.214/IntegrationXmlAPI/api/v1/clo/sincrona/'
+                )
+                try:
+                    result = await request.send_api_request()
+                    # Se achar, consulto o produto pelo sku pra ver se tem cadastro, se não tiver, crio
+                    _product = await product.get_last_by_filters(
+                        db=db,
+                        filters={
+                            'sku': {'operator': '==', 'value': result['MATNR']}
+                        })
+                    if not _product:
+                        product_in = ProductCreate(
+                            category=result['ZTIPO'],
+                            client_name='cielo',
+                            description=result['SHTXT'],
+                            sku=result['MATNR']
+                        )
+                        _product = await product.create(db=db, obj_in=product_in)
+
+                    payload.item.product_id = _product.id
+
+                except Exception as e:
+                    # Se não encontrar, retorno um erro para que o usuário informe o product_id
+                    raise HTTPException(
+                        status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                        detail='Não foi possível localizar o seria. Informe o produto e tente novamente.'
+                    )
+
             logger.info("Item não encontrado, criando novo item...")
             item_in = ItemCreate(
                 product_id=payload.item.product_id,

@@ -16,7 +16,7 @@ class MovementType(enum.Enum):
 
 class MovementPayload(BaseModel):
     item: ItemPayload
-
+    client_name: str
     movement_type: MovementType = Field(
         ...,
         description="Tipo da movimentação (IN, OUT, TRANSFER, ADJUST, RETURN, PICK, PACK)",
