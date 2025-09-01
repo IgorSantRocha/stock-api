@@ -21,7 +21,7 @@ async def read_origins(
         limit: int = 100,
 ) -> Any:
     """
-    Consulta todas as origens possíveis
+    # Consulta todas as origens possíveis
     """
     logger.info("Consultando origins...")
     return await origin.get_multi(db=db, skip=skip, limit=limit)
@@ -34,7 +34,7 @@ async def read_origins_by_client(
 
 ) -> Any:
     """
-    Consulta as origens atreladas ao cliente informado
+    # Consulta as origens atreladas ao cliente informado
     """
     logger.info("Consultando origins por client...")
     _origins = await origin.get_multi_filter(db=db, filterby="client_name", filter=client)
@@ -48,7 +48,7 @@ async def create_origin(
         origin_in: OrderOriginCreate,
 ) -> Any:
     """
-    Cria uma nova origem
+    # Cria uma nova origem
     """
     logger.info("Criando nova origin...")
     _origin = await origin.create(db=db, obj_in=origin_in)
@@ -62,11 +62,11 @@ async def delete_origin(
         id: int,
 ) -> Any:
     """
-    Deleta uma origem existente
+    # Deleta uma origem existente
 
     ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 
-    CUIDADO: Essa ação é irreversível!
+    ## CUIDADO: Essa ação é irreversível!
     """
     _origin = await origin.get(db=db, id=id)
     if not _origin:

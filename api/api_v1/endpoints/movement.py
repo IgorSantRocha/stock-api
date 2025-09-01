@@ -39,8 +39,17 @@ async def create_movement(
         payload: MovementPayload,
 ) -> Any:
     """
-    Cria um novo moveiment
-    """
+# Cria um novo movement
+
+### Detalhes
+- Para casos **Cielo**, o `product_id` pode ser igual a `0`
+- Nesse caso:
+    - Será feita a consulta síncrona para localizar o produto
+    - Caso não dê certo, retorna um erro pedindo que seja enviado `product_id`
+
+> **Nota:** Use sempre `product_id` quando disponível.
+"""
+
     service = MovementService()
     service_response = await service.create_movement(db=db, payload=payload)
 

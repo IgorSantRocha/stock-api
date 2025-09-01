@@ -21,18 +21,19 @@ async def read_products(
         limit: int = 100,
 ) -> Any:
     """
-    Consulta todas as produtos possíveis
+    # Consulta todas as produtos possíveis
     """
     logger.info("Consultando products...")
     return await product.get_multi(db=db, skip=skip, limit=limit)
 
+
 @router.get("/{client}", response_model=List[ProductInDbBase])
 async def read_products(
-        client:str,
+        client: str,
         db: Session = Depends(deps.get_db_psql)
 ) -> Any:
     """
-    Consulta todas as produtos possíveis
+    # Consulta todas as produtos possíveis
     """
     logger.info("Consultando products por client...")
 
@@ -47,7 +48,7 @@ async def create_product(
         product_in: ProductCreate,
 ) -> Any:
     """
-    Cria um novo produto
+    # Cria um novo produto
     """
     # verifica se o produto já existe, se existir, ignora a criação
     existing_product = await product.get_last_by_filters(
@@ -73,11 +74,11 @@ async def delete_product(
         id: int,
 ) -> Any:
     """
-    Deleta um produto existente
+    # Deleta um produto existente
 
     ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 
-    CUIDADO: Essa ação é irreversível!
+    ### CUIDADO: Essa ação é irreversível!
     """
     _product = await product.get(db=db, id=id)
     if not _product:
