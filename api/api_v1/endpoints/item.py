@@ -1,7 +1,7 @@
-from typing import Any, List
+from typing import Any, List, Annotated
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from crud.crud_item import item
@@ -14,10 +14,12 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.get("/{client}", response_model=List[ItemInDbBase])
-async def read_products(
+@router.get("/list/{client}", response_model=List[ItemInDbBase])
+async def read_items_by_client(
         client: str,
         status: str,
+        sales_channels: Annotated[list[str] | None,
+                                  Query(alias="sales_channels[]")] = None,
         db: Session = Depends(deps.get_db_psql)
 ) -> Any:
     """
@@ -30,15 +32,41 @@ async def read_products(
     - `WITH_CUSTOMER` -> Item está em posse do cliente final, ou seja, instalado
     """
     logger.info("Consultando products por client...")
+    filters = [
+        {"field": "status", "operator": "=", "value": status},
+        {"field": "product.client_name", "operator": "=", "value": client},
+    ]
+    if sales_channels:
+        filters.append({"field": "location.sales_channel",
+                       "operator": "in", "value": sales_channels})
 
     itens = await item.list_with_filters(
         db=db,
-        filters=[
-            {"field": "status", "operator": "=", "value": status},
-            {"field": "product.client_name", "operator": "=", "value": client},
-        ],
+        filters=filters,
         order_by="created_at",
         order_desc=True,
         distinct_on_id=True,  # <--- ativa DISTINCT ON (Item.id)
+    )
+    return itens
+
+
+@router.get("/{serial}", response_model=ItemInDbBase)
+async def read_item(
+        client: str,
+        serial: str,
+        db: Session = Depends(deps.get_db_psql)
+) -> Any:
+    """
+    # Consulta um item por client e serial
+    """
+    logger.info("Consultando products por client...")
+    filters = {
+        {"field": "serial", "operator": "=", "value": serial},
+        {"field": "product.client_name", "operator": "=", "value": client},
+    }
+
+    itens = await item.get_last_by_filters(
+        db=db,
+        filters=filters,
     )
     return itens

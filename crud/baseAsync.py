@@ -4,7 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import update, desc
+from sqlalchemy import update, desc, and_
 from db.base_class import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -16,93 +16,203 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
+    # ----------------------
+    # Helpers para relações
+    # ----------------------
+    def _normalize_like(self, op: str, value: Any) -> Any:
+        if op in ("like", "ilike") and isinstance(value, str):
+            if "%" not in value and "_" not in value:
+                return f"%{value}%"
+        return value
+
+    def _resolve_and_join(self, stmt, dotted_field: str, join_tracker: Dict[str, bool]):
+        """
+        Aceita "campo" ou "rel1.rel2.campo". Faz JOIN nas relações conforme necessário
+        e retorna (stmt_atualizado, atributo_SQLAlchemy).
+        """
+        parts = dotted_field.split(".")
+        current_model = self.model
+
+        # Campo simples
+        if len(parts) == 1:
+            attr = getattr(current_model, parts[0], None)
+            if attr is None:
+                raise ValueError(
+                    f"Campo '{parts[0]}' não existe em {current_model.__name__}.")
+            return stmt, attr
+
+        # Caminho relacionado (suporta múltiplos níveis)
+        path_accum = []
+        for rel_name in parts[:-1]:
+            path_accum.append(rel_name)
+            path_key = ".".join(path_accum)
+
+            rel = current_model.__mapper__.relationships.get(rel_name)
+            if rel is None:
+                raise ValueError(
+                    f"Relacionamento '{rel_name}' não existe em {current_model.__name__}."
+                )
+
+            if not join_tracker.get(path_key):
+                stmt = stmt.join(getattr(current_model, rel_name))
+                join_tracker[path_key] = True
+
+            current_model = rel.entity.class_
+
+        # Último pedaço é a coluna
+        col_name = parts[-1]
+        attr = getattr(current_model, col_name, None)
+        if attr is None:
+            raise ValueError(
+                f"Coluna '{col_name}' não existe em {current_model.__name__}.")
+        return stmt, attr
+
+    # Mapa de operadores para get_multi_filters / get_last_by_filters
+    _OP = {
+        "=": lambda f, v: f == v,
+        "==": lambda f, v: f == v,   # sinônimo
+        "!=": lambda f, v: f != v,
+        "<": lambda f, v: f < v,
+        "<=": lambda f, v: f <= v,
+        ">": lambda f, v: f > v,
+        ">=": lambda f, v: f >= v,
+        "like": lambda f, v: f.like(v),
+        "ilike": lambda f, v: f.ilike(v),
+        "in": lambda f, v: f.in_(v),
+        "notin": lambda f, v: ~f.in_(v),
+        "is_null": lambda f, _: f.is_(None),
+        "is_not_null": lambda f, _: f.is_not(None),
+    }
+
+    # ----------------------
+    # GETs adaptados
+    # ----------------------
     async def get(self, db: AsyncSession, id: Any) -> Optional[ModelType]:
         stmt = select(self.model).filter(self.model.id == id)
         result = await db.execute(stmt)
-        return result.scalar_one_or_none()
+        # não precisa de join; mas unique() é inofensivo
+        return result.scalars().unique().first()
 
     async def get_first_by_filter(
         self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str
     ) -> Optional[ModelType]:
-        stmt = select(self.model).where(getattr(self.model, filterby)
-                                        == filter).order_by(getattr(self.model, order_by))
+        join_tracker: Dict[str, bool] = {}
+        stmt = select(self.model)
+
+        # WHERE
+        stmt, where_attr = self._resolve_and_join(stmt, filterby, join_tracker)
+        stmt = stmt.where(where_attr == filter)
+
+        # ORDER BY
+        stmt, order_attr = self._resolve_and_join(stmt, order_by, join_tracker)
+        stmt = stmt.order_by(order_attr)
+
         result = await db.execute(stmt)
-        return result.scalars().first()
+        return result.scalars().unique().first()
 
     async def get_multi(
         self, db: AsyncSession, *, skip: int = 0, limit: int = 100, order_by: str = "id"
     ) -> List[ModelType]:
-        stmt = select(self.model).order_by(
-            getattr(self.model, order_by)).offset(skip).limit(limit)
+        join_tracker: Dict[str, bool] = {}
+        stmt = select(self.model)
+
+        # ORDER BY (suporta relação)
+        stmt, order_attr = self._resolve_and_join(stmt, order_by, join_tracker)
+        stmt = stmt.order_by(order_attr).offset(skip).limit(limit)
+
         result = await db.execute(stmt)
-        return result.scalars().all()
+        return result.scalars().unique().all()
 
     async def get_multi_filter(
         self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str
     ) -> List[ModelType]:
-        stmt = select(self.model).where(getattr(self.model, filterby)
-                                        == filter).order_by(getattr(self.model, order_by))
+        join_tracker: Dict[str, bool] = {}
+        stmt = select(self.model)
+
+        # WHERE
+        stmt, where_attr = self._resolve_and_join(stmt, filterby, join_tracker)
+        stmt = stmt.where(where_attr == filter)
+
+        # ORDER BY
+        stmt, order_attr = self._resolve_and_join(stmt, order_by, join_tracker)
+        stmt = stmt.order_by(order_attr)
+
         result = await db.execute(stmt)
-        return result.scalars().all()
+        return result.scalars().unique().all()
 
     async def get_multi_filters(
         self, db: AsyncSession, *, filters: List[Dict[str, Any]]
     ) -> List[ModelType]:
-        from sqlalchemy import and_
-
-        operator_map = {
-            '=': lambda f, v: f == v,
-            '!=': lambda f, v: f != v,
-            '<': lambda f, v: f < v,
-            '<=': lambda f, v: f <= v,
-            '>': lambda f, v: f > v,
-            '>=': lambda f, v: f >= v,
-            'like': lambda f, v: f.like(v),
-            'ilike': lambda f, v: f.ilike(v),
-            'in': lambda f, v: f.in_(v),
-            'notin': lambda f, v: ~f.in_(v),
-        }
+        join_tracker: Dict[str, bool] = {}
+        stmt = select(self.model)
 
         conditions = []
         for f in filters:
-            field = getattr(self.model, f['field'])
-            operator = f.get('operator', '=')
-            value = f['value']
-            conditions.append(operator_map[operator](field, value))
+            field = f["field"]
+            op = f.get("operator", "=")
+            value = f["value"]
 
-        stmt = select(self.model).where(and_(*conditions))
+            if op not in self._OP:
+                raise ValueError(f"Operador '{op}' não suportado.")
+
+            value = self._normalize_like(op, value)
+
+            stmt, attr = self._resolve_and_join(stmt, field, join_tracker)
+
+            if op in ("in", "notin") and not isinstance(value, (list, tuple, set)):
+                raise ValueError(
+                    f"Operador '{op}' exige lista/tupla de valores.")
+
+            conditions.append(self._OP[op](attr, value))
+
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+
         result = await db.execute(stmt)
-        return result.scalars().all()
+        return result.scalars().unique().all()
 
     async def get_last_by_filters(
         self, db: AsyncSession, *, filters: Dict[str, Dict[str, Union[str, int]]]
     ) -> Optional[ModelType]:
+        """
+        filters esperado:
+        {
+          "status": {"operator": "==", "value": "IN_DEPOT"},
+          "product.client_name": {"operator": "ilike", "value": "cielo"}
+        }
+        """
+        join_tracker: Dict[str, bool] = {}
         stmt = select(self.model)
+
+        conditions = []
         for field, condition in filters.items():
-            operator = condition["operator"]
-            value = condition["value"]
-            col = getattr(self.model, field)
-            if operator == "==":
-                stmt = stmt.where(col == value)
-            elif operator == "!=":
-                stmt = stmt.where(col != value)
-            elif operator == ">":
-                stmt = stmt.where(col > value)
-            elif operator == "<":
-                stmt = stmt.where(col < value)
-            elif operator == ">=":
-                stmt = stmt.where(col >= value)
-            elif operator == "<=":
-                stmt = stmt.where(col <= value)
-            elif operator == "like":
-                stmt = stmt.where(col.like(f"%{value}%"))
-            elif operator == "is_null":
-                stmt = stmt.where(col.is_(None))
+            op = condition["operator"]
+            value = condition.get("value")
 
+            if op not in self._OP:
+                raise ValueError(f"Operador '{op}' não suportado.")
+
+            value = self._normalize_like(op, value)
+            stmt, attr = self._resolve_and_join(stmt, field, join_tracker)
+
+            if op in ("in", "notin") and not isinstance(value, (list, tuple, set)):
+                raise ValueError(
+                    f"Operador '{op}' exige lista/tupla de valores.")
+
+            conditions.append(self._OP[op](attr, value))
+
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+
+        # último por id desc
         stmt = stmt.order_by(desc(self.model.id))
-        result = await db.execute(stmt)
-        return result.scalars().first()
 
+        result = await db.execute(stmt)
+        return result.scalars().unique().first()
+
+    # ----------------------
+    # CRUD write (inalterado)
+    # ----------------------
     async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
         obj_data = jsonable_encoder(obj_in)
         db_obj = self.model(**obj_data)  # type: ignore
@@ -114,8 +224,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def create_multi(self, db: AsyncSession, *, obj_in: List[CreateSchemaType]) -> Dict[str, str]:
         db_objs = [self.model(**jsonable_encoder(obj)) for obj in obj_in]
         db.add_all(db_objs)
-        await db.commit()
-        return {'msg': 'Objetos criados com sucesso'}
+        await db.commit
+        return {"msg": "Objetos criados com sucesso"}
 
     async def update(
         self,
