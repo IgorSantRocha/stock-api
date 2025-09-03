@@ -50,6 +50,12 @@ class MovementService:
                 'serial': {'operator': '==', 'value': payload.item.serial}
             })
 
+        if not _item and payload.movement_type != 'IN':
+            raise HTTPException(
+                status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                detail='Item não encontrado. Para movimentações diferentes de IN, o item deve existir.'
+            )
+
         if not _item:
             if payload.item.product_id == 0:
                 if payload.client_name != 'cielo':
