@@ -74,3 +74,4 @@ async def delete_origin(
     logger.info("Deletando nova origin...")
     _origin = await origin.remove(db=db, id=id)
     return _origin
+# exemplo
