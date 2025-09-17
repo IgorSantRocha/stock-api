@@ -97,7 +97,7 @@ class MovementService:
                     # Se não encontrar, retorno um erro para que o usuário informe o product_id
                     raise HTTPException(
                         status_code=status.HTTP_424_FAILED_DEPENDENCY,
-                        detail='Não foi possível localizar o seria. Informe o produto e tente novamente.'
+                        detail='Não foi possível localizar o serial. Informe o produto e tente novamente.'
                     )
 
             logger.info("Item não encontrado, criando novo item...")

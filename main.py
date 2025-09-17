@@ -66,7 +66,7 @@ async def get_custom_openapi():
 def run():
     # log_config = uvicorn.config.LOGGING_CONFIG
     # log_config["formatters"]["access"]["fmt"] = settings.LOGGING_CONFIG["formatters"]["standard"]["format"]
-    uvicorn.run("main:app", reload=True)
+    uvicorn.run("main:app", reload=True, port=8002)
 
 
 if __name__ == "__main__":

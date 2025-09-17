@@ -61,12 +61,17 @@ async def read_item(
     """
     logger.info("Consultando products por client...")
     filters = {
-        {"field": "serial", "operator": "=", "value": serial},
-        {"field": "product.client_name", "operator": "=", "value": client},
+        'serial': {'operator': '==', 'value': serial},
+        'product.client_name': {'operator': '==', 'value': client}
     }
 
     itens = await item.get_last_by_filters(
         db=db,
         filters=filters,
     )
+    if not itens:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
+        )
     return itens

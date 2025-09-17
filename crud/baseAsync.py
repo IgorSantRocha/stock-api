@@ -187,6 +187,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         conditions = []
         for field, condition in filters.items():
             op = condition["operator"]
+            op = '=' if op == '==' else op
             value = condition.get("value")
 
             if op not in self._OP:
