@@ -54,5 +54,10 @@ class ItemInDbBase(ItemBase):
     id: int
 
 
+class ItemPedidoInDbBase(ItemBase):
+    id: int
+    in_order_number: str
+
+
 class Item(ItemInDbBase):
     pass

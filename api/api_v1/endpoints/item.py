@@ -4,8 +4,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
+from crud.crud_movement import movement
 from crud.crud_item import item
-from schemas.item_schema import ItemCreate, ItemUpdate, ItemInDbBase
+from schemas.item_schema import ItemCreate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase
 
 
 from api import deps
@@ -74,4 +75,46 @@ async def read_item(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
         )
+    return itens
+
+
+@router.get("/{serial}/pedido", response_model=ItemPedidoInDbBase)
+async def read_item(
+        client: str,
+        serial: str,
+        db: Session = Depends(deps.get_db_psql)
+) -> Any:
+    """
+    # Consulta um item por client e serial e retorna o pedido do movimento
+    """
+    logger.info("Consultando products por client...")
+    filters = {
+        'serial': {'operator': '==', 'value': serial},
+        'product.client_name': {'operator': '==', 'value': client}
+    }
+
+    itens = await item.get_last_by_filters(
+        db=db,
+        filters=filters,
+    )
+    if not itens:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
+        )
+
+    movimento = await movement.get_last_by_filters(
+        db=db,
+        filters={
+            'item_id': {'operator': '==', 'value': itens.id}
+        }
+    )
+    if movimento.movement_type != 'IN':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Item sem pedido (O item não possui um movimento de entrada associado)",
+        )
+
+    itens.in_order_number = movimento.order_number
+
     return itens
