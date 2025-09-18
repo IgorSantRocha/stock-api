@@ -19,5 +19,5 @@ class Item(Base):
     location_id = Column(Integer, ForeignKey(
         "logistica_groupaditionalinformation.id"), nullable=False, index=True)
     extra_info = Column(JSON)
-    product = relationship("Product")
-    location = relationship("Location")
+    product = relationship("Product", lazy="selectin")
+    location = relationship("Location", lazy="selectin")

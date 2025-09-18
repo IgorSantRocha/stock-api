@@ -3,6 +3,14 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class RomaneioItemPayload(BaseModel):
+    serial: str
+    volume_number: str
+    kit_number: str
+    client: str
+    location_id: int
+
+
 class RomaneioItemBase(BaseModel):
     romaneio_id: Optional[int] = None
     item_id: Optional[int] = None
