@@ -18,8 +18,10 @@ class RomaneioItem(Base):
     volume_number = Column(String, nullable=False)
     kit_number = Column(String, nullable=True)
 
+    order_number = Column(String, nullable=False)
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     created_by = Column(String, nullable=False)
 
-    item = relationship("Item", foreign_keys=[item_id])
-    romaneio = relationship("Romaneio")
+    item = relationship("Item", foreign_keys=[item_id], lazy="selectin")
+    romaneio = relationship("Romaneio", lazy="selectin")

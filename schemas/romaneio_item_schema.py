@@ -1,6 +1,24 @@
 import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
+
+
+class RomaneioItemKit(BaseModel):
+    kit_number: str
+    serial: str
+    order_number: str
+    created_by: str
+    created_at: datetime.datetime
+
+
+class RomaneioItemVolum(BaseModel):
+    volume_number: str
+    kits: List[RomaneioItemKit]
+
+
+class RomaneioItemResponse(BaseModel):
+    romaneio: str
+    volums: List[RomaneioItemVolum]
 
 
 class RomaneioItemPayload(BaseModel):
@@ -9,6 +27,7 @@ class RomaneioItemPayload(BaseModel):
     kit_number: str
     client: str
     location_id: int
+    create_by: str
 
 
 class RomaneioItemBase(BaseModel):
@@ -20,7 +39,7 @@ class RomaneioItemBase(BaseModel):
 
 
 class RomaneioItemCreate(RomaneioItemBase):
-    pass
+    order_number: str
 
 
 class RomaneioItemUpdate(BaseModel):
@@ -34,6 +53,7 @@ class RomaneioItemUpdate(BaseModel):
 class RomaneioItemInDbBase(RomaneioItemBase):
     id: int
     created_at: datetime.datetime
+    order_number: str
 
     class Config:
         from_attributes = True  # permite usar .from_orm()

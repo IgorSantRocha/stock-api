@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from crud.crud_movement import movement as movement_crud
-from crud.crud_item import item as item_crud
+from crud.crud_romaneio_item import romaneio_crud_item as romaneio_item
 from crud.crud_romaneio import romaneio_crud as romaneio
-from schemas.romaneio_item_schema import RomaneioItemPayload
+from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse
 from schemas.romaneio_schema import RomaneioCreate, RomaneioUpdate, RomaneioInDbBase
 
+from services.romaneio import RomaneioItemService
 
 from api import deps
 
@@ -55,7 +56,7 @@ async def read_romaneio(
     return existing_romaneio
 
 
-@router.post("/insert-items/{romaneio_in}", response_model=RomaneioInDbBase)
+@router.post("/insert-items/{romaneio_in}", response_model=RomaneioItemResponse)
 async def insert_items_romaneio(
         romaneio_in: str,
         item: RomaneioItemPayload,
@@ -77,43 +78,10 @@ async def insert_items_romaneio(
     * Se o item estiver em outro romaneio inativo, permite a inserção
     * Atualiza o item com o romaneio_id
     """
-    logger.info("Consulta o romaneio")
-    romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
-    existing_romaneio = await romaneio.get_last_by_filters(
-        db=db,
-        filters={
-            'id': {'operator': '==', 'value': romaneio_id},
-        }
-    )
-    # Se o romaneio não existir, retorna um erro
-    if not existing_romaneio:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="romaneio not found")
+    service = RomaneioItemService()
 
-    logger.info("Consulta o item pelo serial e client")
-    last_movement = await movement_crud.get_last_by_filters(
-        db=db,
-        filters={
-            'item.serial': {'operator': '==', 'value': item.serial},
-            'item.product.client_name': {'operator': '==', 'value': item.client},
-            'item.status': {'operator': '==', 'value': 'IN_DEPOT'},
-            'item.location_id': {'operator': '==', 'value': item.location_id}
-        }
-    )
-
-    if not last_movement:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found (O serial informado não existe, não pertence a este cliente ou não está com status 'IN_DEPOT')",
-        )
-
-    if last_movement.movement_type != 'IN':
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Item sem pedido (O item não possui um movimento de entrada associado)",
-        )
-
-    return ''
+    romaneio_list = await service.insere_novo_item(db=db, romaneio_in=romaneio_in, item=item)
+    return romaneio_list
 
 
 @router.post("/{romaneio}", response_model=RomaneioInDbBase)
