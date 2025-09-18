@@ -10,13 +10,18 @@ from sqlalchemy.orm import declarative_base
 class Romaneio(Base):
     __tablename__ = "logistic_stock_reverse_item"
     id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    created_by = Column(String, nullable=False)
 
     item_id = Column(Integer, ForeignKey(
         "logistic_stock_item.id"), nullable=True, index=True)
     volume_number = Column(String, nullable=False)
     kit_number = Column(String, nullable=True)
+
+    status_rom = Column(String, nullable=False, default="ABERTO", index=True)
+
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_by = Column(String, nullable=False)
+    update_at = Column(DateTime, onupdate=func.now())
+    update_by = Column(String, nullable=True)
 
     item = relationship("Item", foreign_keys=[item_id])
 
