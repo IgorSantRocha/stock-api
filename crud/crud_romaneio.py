@@ -7,4 +7,4 @@ class CRUDItem(CRUDBase[Model, SchemaCreate, SchemaUpdate]):
     pass
 
 
-romaneio_crud_item = CRUDItem(Model)
+romaneio_crud = CRUDItem(Model)
