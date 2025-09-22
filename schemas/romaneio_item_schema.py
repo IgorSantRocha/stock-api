@@ -12,12 +12,13 @@ class RomaneioItemKit(BaseModel):
 
 
 class RomaneioItemVolum(BaseModel):
-    volume_number: str
+    volum_number: str
     kits: List[RomaneioItemKit]
 
 
 class RomaneioItemResponse(BaseModel):
     romaneio: str
+    status: str
     volums: List[RomaneioItemVolum]
 
 
@@ -54,6 +55,7 @@ class RomaneioItemInDbBase(RomaneioItemBase):
     id: int
     created_at: datetime.datetime
     order_number: str
+    status: str
 
     class Config:
         from_attributes = True  # permite usar .from_orm()

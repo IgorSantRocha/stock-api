@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from crud.crud_movement import movement as movement_crud
 from crud.crud_romaneio_item import romaneio_crud_item as romaneio_item
 from crud.crud_romaneio import romaneio_crud as romaneio
+from crud.crud_item import item as item_crud
 from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse
 from schemas.romaneio_schema import RomaneioCreate, RomaneioUpdate, RomaneioInDbBase
 
@@ -31,7 +32,7 @@ async def read_romaneios(
     return await romaneio.get_multi(db=db, skip=skip, limit=limit)
 
 
-@router.get("/{romaneio_in}", response_model=RomaneioInDbBase)
+@router.get("/{romaneio_in}", response_model=RomaneioItemResponse)
 async def read_romaneio(
         romaneio_in: str,
         db: Session = Depends(deps.get_db_psql)
@@ -42,17 +43,9 @@ async def read_romaneio(
     * Se o Romaneio não existe, retorna 404
 
     """
-    logger.info("Consultando romaneio...")
-    romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
-    existing_romaneio = await romaneio.get_last_by_filters(
-        db=db,
-        filters={
-            'id': {'operator': '==', 'value': romaneio_id},
-        }
-    )
-    if not existing_romaneio:
-        raise HTTPException(status_code=404, detail="romaneio not found")
+    service = RomaneioItemService()
 
+    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in)
     return existing_romaneio
 
 
@@ -82,34 +75,6 @@ async def insert_items_romaneio(
 
     romaneio_list = await service.insere_novo_item(db=db, romaneio_in=romaneio_in, item=item)
     return romaneio_list
-
-
-@router.post("/{romaneio}", response_model=RomaneioInDbBase)
-async def create_romaneio(
-        romaneio_in: str,
-        db: Session = Depends(deps.get_db_psql),
-
-) -> Any:
-    # Recebe o romaneio no formato: AR00003 e extrai o ID desse romaneio (remove o AR e os zeros à esquerda)
-
-    romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
-
-    existing_romaneio = await romaneio.get_last_by_filters(
-        db=db,
-        filters={
-            'id': {'operator': '==', 'value': romaneio_id},
-        }
-    )
-    if existing_romaneio:
-        logger.info("Romaneio já existe, ignorando criação...")
-        return existing_romaneio
-
-    logger.info("Romaneio não existe, criando novo romaneio...")
-    _romaneio = await romaneio.create(db=db, obj_in=RomaneioCreate(id=romaneio_id, status_rom='ATIVO',
-                                                                   item_id=0, volume_number='',
-                                                                   kit_number='', created_by='ARC'))
-
-    return ''
 
 
 @router.post("/", response_model=RomaneioInDbBase)
@@ -149,3 +114,38 @@ async def put_romaneio(
     logger.info("Deletando nova romaneio...")
     _romaneio = await romaneio.update(db=db, db_obj=_romaneio, obj_in=payload)
     return _romaneio
+
+
+@router.delete(path="/{romaneio_in}/{id}", response_model=RomaneioItemResponse)
+async def delete_item_rom(
+        romaneio_in: str,
+        serial: str,
+        db: Session = Depends(deps.get_db_psql),
+) -> Any:
+    """
+    # Deleta um item do romaneio de acordo com o serial
+
+    ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+
+    ### CUIDADO: Essa ação é irreversível!
+    """
+
+    item = await item_crud.get_first_by_filter(
+        db=db, filterby="serial", filter=serial)
+    item_id = item.id
+    _romaneio_item = await romaneio_item.get_last_by_filters(
+        db=db,
+        filters={
+            'item_id': {'operator': '==', 'value': item_id},
+            'romaneio.id': {'operator': '==', 'value': int(romaneio_in.replace('AR', '').lstrip('0'))}
+        }
+    )
+    if not _romaneio_item:
+        raise HTTPException(status_code=404, detail="product not found")
+    logger.info("Deletando nova product...")
+    _romaneio_item = await romaneio_item.remove(db=db, id=_romaneio_item.id)
+
+    service = RomaneioItemService()
+
+    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in)
+    return existing_romaneio

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class RomaneioItemService:
-    def build_romaneio_response(self, romaneio_list):
+    def build_romaneio_response(self, romaneio_list, status_rom=None):
         volumes_dict = {}
 
         for idx, item in enumerate(romaneio_list, start=1):
@@ -34,7 +34,7 @@ class RomaneioItemService:
                 volumes_dict[vol_num][kit_num] = []
 
             item_volume = RomaneioItemKit(
-                kit_number=item.kit_number,
+                kit_number=str(item.kit_number),
                 serial=item.item.serial,
                 order_number=item.order_number,
                 created_by=item.created_by,
@@ -48,11 +48,13 @@ class RomaneioItemService:
             kits = []
             for kit_num, kit_items in kits_dict.items():
                 kits.extend(kit_items)
-            volumes.append(RomaneioItemVolum(volume_number=vol_num, kits=kits))
+            volumes.append(RomaneioItemVolum(
+                volum_number=str(vol_num), kits=kits))
 
         return RomaneioItemResponse(
-            romaneio=romaneio_list.first().romaneio_id,
-            volumes=volumes
+            romaneio=str(romaneio_list[0].romaneio_id),
+            status=status_rom,
+            volums=volumes
         )
 
     async def insere_novo_item(self, db: Session, romaneio_in: str, item: RomaneioItemPayload):
@@ -113,11 +115,29 @@ class RomaneioItemService:
                 item_id=last_movement.item_id,
                 created_by=item.create_by,
                 kit_number=item.kit_number,
-                volume_number=item.volume_number
+                volume_number=item.volume_number,
+                order_number=last_movement.order_number
             )
 
             new_obj = await romaneio_item.create(db=db, obj_in=obj_romaneio_item)
 
         # consulto o romaneio atualizado e retorno a lista de items atrelados a ele
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=existing_romaneio.id)
-        return self.build_romaneio_response(romaneio_list)
+        return self.build_romaneio_response(romaneio_list, existing_romaneio.status_rom)
+
+    async def consulta_romaneio(self, db: Session, romaneio_in: str):
+        logger.info("Consulta o romaneio")
+        romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
+        existing_romaneio = await romaneio.get_last_by_filters(
+            db=db,
+            filters={
+                'id': {'operator': '==', 'value': romaneio_id},
+            }
+        )
+        # Se o romaneio não existir, retorna um erro
+        if not existing_romaneio:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="romaneio not found")
+        # consulto o romaneio atualizado e retorno a lista de items atrelados a ele
+        romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=romaneio_id)
+        return self.build_romaneio_response(romaneio_list, existing_romaneio.status_rom)
