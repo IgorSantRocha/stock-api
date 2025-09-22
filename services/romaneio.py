@@ -109,6 +109,18 @@ class RomaneioItemService:
                 'romaneio_id': {'operator': '==', 'value': existing_romaneio.id},
                 'item_id': {'operator': '==', 'value': last_movement.item_id}
             })
+        # verifico se o item está atrelado a outro romaneio em aberto
+        existing_outher_romaneio_item = await romaneio_item.get_last_by_filters(
+            db=db,
+            filters={
+                'item_id': {'operator': '==', 'value': last_movement.item_id},
+                'romaneio.status_rom': {'operator': '==', 'value': 'ABERTO'}
+            })
+        if existing_outher_romaneio_item:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item {last_movement.item.serial} já atrelado a outro romaneio em aberto (Romaneio: AR{str(existing_outher_romaneio_item.romaneio_id).zfill(6)})",
+            )
         if not existing_romaneio_item:
             obj_romaneio_item = RomaneioItemCreate(
                 romaneio_id=existing_romaneio.id,
@@ -140,4 +152,10 @@ class RomaneioItemService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="romaneio not found")
         # consulto o romaneio atualizado e retorno a lista de items atrelados a ele
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=romaneio_id)
+        if not romaneio_list:
+            return RomaneioItemResponse(
+                romaneio=str(romaneio_id),
+                status=existing_romaneio.status_rom,
+                volums=[]
+            )
         return self.build_romaneio_response(romaneio_list, existing_romaneio.status_rom)

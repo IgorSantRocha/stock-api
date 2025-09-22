@@ -137,15 +137,26 @@ async def delete_item_rom(
         db=db,
         filters={
             'item_id': {'operator': '==', 'value': item_id},
-            'romaneio.id': {'operator': '==', 'value': int(romaneio_in.replace('AR', '').lstrip('0'))}
+            'romaneio.id': {'operator': '==', 'value': int(romaneio_in.replace('AR', '').lstrip('0'))},
         }
     )
     if not _romaneio_item:
-        raise HTTPException(status_code=404, detail="product not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Serial ou romaneio não existem")
+
+    if _romaneio_item.romaneio.status_rom != 'ABERTO':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Romaneio com status {_romaneio_item.romaneio.status_rom} (Só é permitido remover itens de romaneios com status 'ABERTO')",
+        )
+
     logger.info("Deletando nova product...")
     _romaneio_item = await romaneio_item.remove(db=db, id=_romaneio_item.id)
 
     service = RomaneioItemService()
-
     existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in)
+    if not existing_romaneio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="romaneio not found")
+
     return existing_romaneio

@@ -21,6 +21,10 @@ class RomaneioItemResponse(BaseModel):
     status: str
     volums: List[RomaneioItemVolum]
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.romaneio = f"AR{str(self.romaneio).zfill(5)}"
+
 
 class RomaneioItemPayload(BaseModel):
     serial: str
