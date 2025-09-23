@@ -15,6 +15,12 @@ class RomaneioCreate(RomaneioBase):
     # pode até remover `status_rom` daqui.
 
 
+class RomaneioCreateV2(BaseModel):
+    created_by: str
+    # Se no create você quiser deixar o status fixo como default (sem aceitar override),
+    # pode até remover `status_rom` daqui.
+
+
 class RomaneioUpdate(BaseModel):
     # No update geralmente todos os campos são opcionais (PATCH style)
     status_rom: Optional[str] = None

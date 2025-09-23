@@ -9,7 +9,7 @@ from crud.crud_romaneio_item import romaneio_crud_item as romaneio_item
 from crud.crud_romaneio import romaneio_crud as romaneio
 from crud.crud_item import item as item_crud
 from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse
-from schemas.romaneio_schema import RomaneioCreate, RomaneioUpdate, RomaneioInDbBase
+from schemas.romaneio_schema import RomaneioCreateV2, RomaneioUpdate, RomaneioInDbBase
 
 from services.romaneio import RomaneioItemService
 
@@ -77,11 +77,11 @@ async def insert_items_romaneio(
     return romaneio_list
 
 
-@router.post("/", response_model=RomaneioInDbBase)
+@router.post("/", response_model=RomaneioItemResponse)
 async def create_romaneio(
         *,
         db: Session = Depends(deps.get_db_psql),
-        romaneio_in: RomaneioCreate,
+        romaneio_in: RomaneioCreateV2,
 ) -> Any:
     """
     # Cria um novo romaneio
@@ -89,7 +89,10 @@ async def create_romaneio(
 
     logger.info("Criando novo romaneio...")
     _romaneio = await romaneio.create(db=db, obj_in=romaneio_in)
-    return _romaneio
+    service = RomaneioItemService()
+    romaneio_in_str = f"AR{str(_romaneio.id).zfill(5)}"
+    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in_str)
+    return existing_romaneio
 
 
 @router.put(path="/{id}", response_model=RomaneioInDbBase)
