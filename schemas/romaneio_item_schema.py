@@ -19,6 +19,7 @@ class RomaneioItemVolum(BaseModel):
 class RomaneioItemResponse(BaseModel):
     romaneio: str
     status: str
+    location_id: Optional[int] = None
     volums: List[RomaneioItemVolum]
 
     def __init__(self, **data):

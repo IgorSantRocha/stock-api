@@ -35,6 +35,7 @@ async def read_romaneios(
 @router.get("/{romaneio_in}", response_model=RomaneioItemResponse)
 async def read_romaneio(
         romaneio_in: str,
+        location_id: int = None,
         db: Session = Depends(deps.get_db_psql)
 ) -> Any:
     """
@@ -45,7 +46,7 @@ async def read_romaneio(
     """
     service = RomaneioItemService()
 
-    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in)
+    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in, location_id=location_id)
     return existing_romaneio
 
 

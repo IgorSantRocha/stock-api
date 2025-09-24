@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class RomaneioItemService:
-    def build_romaneio_response(self, romaneio_list, status_rom=None):
+    def build_romaneio_response(self, romaneio_list, location_id: int, status_rom=None):
         volumes_dict = {}
 
         for idx, item in enumerate(romaneio_list, start=1):
@@ -54,6 +54,7 @@ class RomaneioItemService:
         return RomaneioItemResponse(
             romaneio=str(romaneio_list[0].romaneio_id),
             status=status_rom,
+            location_id=location_id,
             volums=volumes
         )
 
@@ -135,17 +136,26 @@ class RomaneioItemService:
 
         # consulto o romaneio atualizado e retorno a lista de items atrelados a ele
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=existing_romaneio.id)
-        return self.build_romaneio_response(romaneio_list, existing_romaneio.status_rom)
+        return self.build_romaneio_response(romaneio_list, item.location_id, existing_romaneio.status_rom)
 
-    async def consulta_romaneio(self, db: Session, romaneio_in: str):
+    async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 'all'):
         logger.info("Consulta o romaneio")
         romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
-        existing_romaneio = await romaneio.get_last_by_filters(
-            db=db,
-            filters={
-                'id': {'operator': '==', 'value': romaneio_id},
-            }
-        )
+        if location_id != 'all':
+            existing_romaneio = await romaneio.get_last_by_filters(
+                db=db,
+                filters={
+                    'id': {'operator': '==', 'value': romaneio_id},
+                    'location_id': {'operator': '==', 'value': location_id},
+                }
+            )
+        else:
+            existing_romaneio = await romaneio.get_last_by_filters(
+                db=db,
+                filters={
+                    'id': {'operator': '==', 'value': romaneio_id},
+                }
+            )
         # Se o romaneio não existir, retorna um erro
         if not existing_romaneio:
             raise HTTPException(
@@ -156,6 +166,7 @@ class RomaneioItemService:
             return RomaneioItemResponse(
                 romaneio=str(romaneio_id),
                 status=existing_romaneio.status_rom,
+                location_id=existing_romaneio.location_id,
                 volums=[]
             )
         return self.build_romaneio_response(romaneio_list, existing_romaneio.status_rom)

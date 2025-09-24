@@ -17,6 +17,7 @@ class RomaneioCreate(RomaneioBase):
 
 class RomaneioCreateV2(BaseModel):
     created_by: str
+    location_id: int
     # Se no create você quiser deixar o status fixo como default (sem aceitar override),
     # pode até remover `status_rom` daqui.
 
