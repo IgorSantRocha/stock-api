@@ -124,7 +124,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return result.scalars().unique().all()
 
     async def get_multi_filter(
-        self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str
+        self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str, skip: int = None, limit: int = None
     ) -> List[ModelType]:
         join_tracker: Dict[str, bool] = {}
         stmt = select(self.model)
@@ -135,7 +135,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         # ORDER BY
         stmt, order_attr = self._resolve_and_join(stmt, order_by, join_tracker)
-        stmt = stmt.order_by(order_attr)
+        if skip and limit:
+            stmt = stmt.order_by(order_attr).offset(skip).limit(limit)
+        else:
+            stmt = stmt.order_by(order_attr)
 
         result = await db.execute(stmt)
         return result.scalars().unique().all()

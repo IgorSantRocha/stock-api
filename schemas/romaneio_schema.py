@@ -33,6 +33,7 @@ class RomaneioInDbBase(RomaneioBase):
     created_at: datetime.datetime
     update_at: Optional[datetime.datetime] = None
     reverse_item_name: str
+    location_id: int
 
     class Config:
         from_attributes = True  # importante p/ SQLAlchemy -> Pydantic

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @router.get("/", response_model=List[RomaneioInDbBase])
 async def read_romaneios(
         db: Session = Depends(deps.get_db_psql),
+        location_id: int = None,
         skip: int = 0,
         limit: int = 100,
 ) -> Any:
@@ -29,7 +30,15 @@ async def read_romaneios(
     # Consulta todas as romaneios possíveis, com paginação
     """
     logger.info("Consultando romaneios...")
-    return await romaneio.get_multi(db=db, skip=skip, limit=limit)
+    if not location_id and location_id != 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="É necessário informar o location_id")
+    if location_id == 0:
+        _romaneios = await romaneio.get_multi(db=db, skip=skip, limit=limit)
+    else:
+        _romaneios = await romaneio.get_multi_filter(db=db, filterby='location_id', filter=location_id, skip=skip, limit=limit)
+
+    return _romaneios
 
 
 @router.get("/{romaneio_in}", response_model=RomaneioItemResponse)
@@ -44,6 +53,9 @@ async def read_romaneio(
     * Se o Romaneio não existe, retorna 404
 
     """
+    if not location_id and location_id != 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="É necessário informar o location_id")
     service = RomaneioItemService()
 
     existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in, location_id=location_id)

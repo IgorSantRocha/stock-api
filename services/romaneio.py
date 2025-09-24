@@ -138,10 +138,10 @@ class RomaneioItemService:
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=existing_romaneio.id)
         return self.build_romaneio_response(romaneio_list, item.location_id, existing_romaneio.status_rom)
 
-    async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 'all'):
+    async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 0):
         logger.info("Consulta o romaneio")
         romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
-        if location_id != 'all':
+        if location_id != 0:
             existing_romaneio = await romaneio.get_last_by_filters(
                 db=db,
                 filters={
@@ -169,4 +169,4 @@ class RomaneioItemService:
                 location_id=existing_romaneio.location_id,
                 volums=[]
             )
-        return self.build_romaneio_response(romaneio_list, existing_romaneio.status_rom)
+        return self.build_romaneio_response(romaneio_list, location_id, existing_romaneio.status_rom)
