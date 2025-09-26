@@ -13,11 +13,9 @@ class OrderOriginBase(BaseModel):
         description="Nome do projeto ou sistema interno relacionado à origem",
         example="LastMile (B2C)"
     )
-    client_name: Optional[str] = Field(
-        None,
-        description="Nome do cliente associado à origem",
-        example="C-Trends"
-    )
+    client_id: int = Field(...,
+                           description="Id do cliente associado ao produto",
+                           example="cielo = 1")
 
     model_config = {
         "from_attributes": True,

@@ -37,7 +37,7 @@ async def read_origins_by_client(
     # Consulta as origens atreladas ao cliente informado
     """
     logger.info("Consultando origins por client...")
-    _origins = await origin.get_multi_filter(db=db, filterby="client_name", filter=client)
+    _origins = await origin.get_multi_filter(db=db, filterby="client.client_code", filter=client)
     return _origins
 
 

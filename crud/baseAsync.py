@@ -17,7 +17,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self.model = model
 
     # ----------------------
-    # Helpers para relações
+    # Helpers
     # ----------------------
     def _normalize_like(self, op: str, value: Any) -> Any:
         if op in ("like", "ilike") and isinstance(value, str):
@@ -67,7 +67,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 f"Coluna '{col_name}' não existe em {current_model.__name__}.")
         return stmt, attr
 
-    # Mapa de operadores para get_multi_filters / get_last_by_filters
+    # Operadores suportados
     _OP = {
         "=": lambda f, v: f == v,
         "==": lambda f, v: f == v,   # sinônimo
@@ -90,11 +90,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def get(self, db: AsyncSession, id: Any) -> Optional[ModelType]:
         stmt = select(self.model).filter(self.model.id == id)
         result = await db.execute(stmt)
-        # não precisa de join; mas unique() é inofensivo
         return result.scalars().unique().first()
 
     async def get_first_by_filter(
-        self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str
+        self, db: AsyncSession, *, order_by: str = "id", filterby: str = "id", filter: Any = None
     ) -> Optional[ModelType]:
         join_tracker: Dict[str, bool] = {}
         stmt = select(self.model)
@@ -111,20 +110,28 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return result.scalars().unique().first()
 
     async def get_multi(
-        self, db: AsyncSession, *, skip: int = 0, limit: int = 100, order_by: str = "id"
+        self, db: AsyncSession, *, skip: int = 0, limit: int = 100, order_by: str = "id", order_desc: bool = False
     ) -> List[ModelType]:
         join_tracker: Dict[str, bool] = {}
         stmt = select(self.model)
 
-        # ORDER BY (suporta relação)
         stmt, order_attr = self._resolve_and_join(stmt, order_by, join_tracker)
-        stmt = stmt.order_by(order_attr).offset(skip).limit(limit)
+        order_clause = order_attr.desc() if order_desc else order_attr.asc()
+        stmt = stmt.order_by(order_clause).offset(skip).limit(limit)
 
         result = await db.execute(stmt)
         return result.scalars().unique().all()
 
     async def get_multi_filter(
-        self, db: AsyncSession, *, order_by: str = "id", filterby: str = "enviado", filter: str, skip: int = None, limit: int = None
+        self,
+        db: AsyncSession,
+        *,
+        order_by: str = "id",
+        order_desc: bool = False,
+        filterby: str = "id",
+        filter: Any = None,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
     ) -> List[ModelType]:
         join_tracker: Dict[str, bool] = {}
         stmt = select(self.model)
@@ -135,16 +142,27 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         # ORDER BY
         stmt, order_attr = self._resolve_and_join(stmt, order_by, join_tracker)
-        if skip and limit:
-            stmt = stmt.order_by(order_attr).offset(skip).limit(limit)
-        else:
-            stmt = stmt.order_by(order_attr)
+        order_clause = order_attr.desc() if order_desc else order_attr.asc()
+        stmt = stmt.order_by(order_clause)
+
+        if skip:
+            stmt = stmt.offset(skip)
+        if limit:
+            stmt = stmt.limit(limit)
 
         result = await db.execute(stmt)
         return result.scalars().unique().all()
 
     async def get_multi_filters(
-        self, db: AsyncSession, *, filters: List[Dict[str, Any]]
+        self,
+        db: AsyncSession,
+        *,
+        filters: List[Dict[str, Any]],
+        order_by: Optional[str] = None,
+        order_desc: bool = False,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+        distinct_on_id: bool = False,
     ) -> List[ModelType]:
         join_tracker: Dict[str, bool] = {}
         stmt = select(self.model)
@@ -159,38 +177,56 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 raise ValueError(f"Operador '{op}' não suportado.")
 
             value = self._normalize_like(op, value)
-
             stmt, attr = self._resolve_and_join(stmt, field, join_tracker)
 
             if op in ("in", "notin") and not isinstance(value, (list, tuple, set)):
-                raise ValueError(
-                    f"Operador '{op}' exige lista/tupla de valores.")
+                raise ValueError(f"Operador '{op}' exige lista/tupla.")
 
             conditions.append(self._OP[op](attr, value))
 
         if conditions:
             stmt = stmt.where(and_(*conditions))
 
+        # ORDER BY
+        order_clause = None
+        if order_by:
+            stmt, order_attr = self._resolve_and_join(
+                stmt, order_by, join_tracker)
+            order_clause = order_attr.desc() if order_desc else order_attr.asc()
+
+        if distinct_on_id:
+            stmt = stmt.distinct(self.model.id)
+            if order_clause is not None:
+                stmt = stmt.order_by(self.model.id, order_clause)
+            else:
+                stmt = stmt.order_by(self.model.id)
+        else:
+            if order_clause is not None:
+                stmt = stmt.order_by(order_clause)
+
+        if offset:
+            stmt = stmt.offset(offset)
+        if limit:
+            stmt = stmt.limit(limit)
+
         result = await db.execute(stmt)
         return result.scalars().unique().all()
 
     async def get_last_by_filters(
-        self, db: AsyncSession, *, filters: Dict[str, Dict[str, Union[str, int]]]
+        self,
+        db: AsyncSession,
+        *,
+        filters: Dict[str, Dict[str, Union[str, Any]]],
+        order_by: str = "id",
+        order_desc: bool = True,
     ) -> Optional[ModelType]:
-        """
-        filters esperado:
-        {
-          "status": {"operator": "==", "value": "IN_DEPOT"},
-          "product.client_name": {"operator": "ilike", "value": "cielo"}
-        }
-        """
         join_tracker: Dict[str, bool] = {}
         stmt = select(self.model)
 
         conditions = []
         for field, condition in filters.items():
-            op = condition["operator"]
-            op = '=' if op == '==' else op
+            op = condition.get("operator", "=")
+            op = "=" if op == "==" else op
             value = condition.get("value")
 
             if op not in self._OP:
@@ -200,16 +236,17 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             stmt, attr = self._resolve_and_join(stmt, field, join_tracker)
 
             if op in ("in", "notin") and not isinstance(value, (list, tuple, set)):
-                raise ValueError(
-                    f"Operador '{op}' exige lista/tupla de valores.")
+                raise ValueError(f"Operador '{op}' exige lista/tupla.")
 
             conditions.append(self._OP[op](attr, value))
 
         if conditions:
             stmt = stmt.where(and_(*conditions))
 
-        # último por id desc
-        stmt = stmt.order_by(desc(self.model.id))
+        # ORDER BY dinâmico
+        stmt, order_attr = self._resolve_and_join(stmt, order_by, join_tracker)
+        order_clause = order_attr.desc() if order_desc else order_attr.asc()
+        stmt = stmt.order_by(order_clause)
 
         result = await db.execute(stmt)
         return result.scalars().unique().first()
@@ -228,7 +265,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def create_multi(self, db: AsyncSession, *, obj_in: List[CreateSchemaType]) -> Dict[str, str]:
         db_objs = [self.model(**jsonable_encoder(obj)) for obj in obj_in]
         db.add_all(db_objs)
-        await db.commit
+        await db.commit()
         return {"msg": "Objetos criados com sucesso"}
 
     async def update(
@@ -236,7 +273,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: AsyncSession,
         *,
         db_obj: ModelType,
-        obj_in: Union[UpdateSchemaType, Dict[str, Any]]
+        obj_in: Union[UpdateSchemaType, Dict[str, Any]],
     ) -> ModelType:
         update_data = obj_in if isinstance(
             obj_in, dict) else obj_in.dict(exclude_unset=True)
@@ -251,7 +288,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: AsyncSession,
         *,
         objs_in: List[Union[UpdateSchemaType, Dict[str, Any]]],
-        filtro: str
+        filtro: str,
     ) -> List[ModelType]:
         updated_objs = []
         for obj_in in objs_in:

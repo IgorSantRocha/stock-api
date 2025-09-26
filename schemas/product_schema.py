@@ -10,9 +10,9 @@ class ProductBase(BaseModel):
     category: Optional[str] = Field(
         None, description="Categoria do produto (ex.: POS, Modem, PinPad)", example="POS")
 
-    client_name: str = Field(...,
-                             description="Nome do cliente associado ao produto",
-                             example="C-Trends")
+    client_id: int = Field(...,
+                           description="Id do cliente associado ao produto",
+                           example="cielo = 1")
 
     created_by: str = Field(...,
                             description="Username/Sysname de criação",

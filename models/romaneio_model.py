@@ -3,6 +3,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from db.base_class import Base
+from sqlalchemy import text
 
 
 class Romaneio(Base):
@@ -33,20 +34,15 @@ class Romaneio(Base):
         lazy="joined",
     )
 
-    @property
-    def reverse_item_name(self):
-        if not self.client_id or not self.id:
-            return None
-        return f"AR{self.client_id}{str(self.id).zfill(5)}"
-
 
 @event.listens_for(Romaneio, "before_insert")
 def generate_romaneio_number(mapper, connection, target):
     if not target.client_id:
         raise ValueError("client_id deve ser definido antes de salvar.")
 
-    next_id = connection.execute(
-        f"SELECT COALESCE(MAX(id), 0) + 1 FROM {Romaneio.__tablename__}"
-    ).scalar()
+    result = connection.execute(
+        text(f"SELECT COALESCE(MAX(id), 0) + 1 FROM {Romaneio.__tablename__}")
+    )
+    next_id = result.scalar()
 
-    target.romaneio_number = f"AR{target.client_id}{str(next_id).zfill(5)}"
+    target.romaneio_number = f"AR{target.client_id}{str(next_id).zfill(8)}"

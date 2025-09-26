@@ -7,11 +7,13 @@ class RomaneioBase(BaseModel):
     status_rom: Optional[str] = "ABERTO"  # default igual ao model
     created_by: str
     update_by: Optional[str] = None
-    client_name: str
+    client_id: int
 
 
-class RomaneioCreate(RomaneioBase):
-    pass
+class RomaneioCreate(BaseModel):
+    created_by: str
+    location_id: int
+    client_id: int
     # Se no create você quiser deixar o status fixo como default (sem aceitar override),
     # pode até remover `status_rom` daqui.
 
@@ -19,6 +21,7 @@ class RomaneioCreate(RomaneioBase):
 class RomaneioCreateV2(BaseModel):
     created_by: str
     location_id: int
+    client_name: str
     # Se no create você quiser deixar o status fixo como default (sem aceitar override),
     # pode até remover `status_rom` daqui.
 
@@ -33,7 +36,7 @@ class RomaneioInDbBase(RomaneioBase):
     id: int
     created_at: datetime.datetime
     update_at: Optional[datetime.datetime] = None
-    reverse_item_name: str
+    romaneio_number: str
     location_id: int
 
     class Config:

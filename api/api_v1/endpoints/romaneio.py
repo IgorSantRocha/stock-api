@@ -8,8 +8,9 @@ from crud.crud_movement import movement as movement_crud
 from crud.crud_romaneio_item import romaneio_crud_item as romaneio_item
 from crud.crud_romaneio import romaneio_crud as romaneio
 from crud.crud_item import item as item_crud
+from crud.crud_client import client_crud
 from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse
-from schemas.romaneio_schema import RomaneioCreateV2, RomaneioUpdate, RomaneioInDbBase
+from schemas.romaneio_schema import RomaneioCreateV2, RomaneioUpdate, RomaneioInDbBase, RomaneioCreate
 
 from services.romaneio import RomaneioItemService
 
@@ -101,25 +102,31 @@ async def create_romaneio(
     """
 
     logger.info("Criando novo romaneio...")
-    _romaneio = await romaneio.create(db=db, obj_in=romaneio_in)
+    _client = await client_crud.get_first_by_filter(db=db, filterby="client_code", filter=romaneio_in.client_name)
+    new_rom = RomaneioCreate(
+        client_id=_client.id,
+        location_id=romaneio_in.location_id,
+        created_by=romaneio_in.created_by
+    )
+    _romaneio = await romaneio.create(db=db, obj_in=new_rom)
     service = RomaneioItemService()
-    romaneio_in_str = f"AR{str(_romaneio.id).zfill(5)}"
-    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in_str)
+    # romaneio_in_str = f"AR{str(_romaneio.id).zfill(5)}"
+    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=_romaneio.romaneio_number)
     return existing_romaneio
 
 
-@router.put(path="/{id}", response_model=RomaneioInDbBase)
+@router.put(path="/{romaneio_in}", response_model=RomaneioInDbBase)
 async def put_romaneio(
         *,
         db: Session = Depends(deps.get_db_psql),
-        id: int,
+        romaneio_in: str,
         payload: RomaneioUpdate
 ) -> Any:
     """
     # Atualiza informações de um romaneio existente
     ### CUIDADO: Essa ação é irreversível!
     """
-    _romaneio = await romaneio.get(db=db, id=id)
+    _romaneio = await romaneio.get_first_by_filter(db=db, filterby="romaneio_number", filter=romaneio_in)
     if not _romaneio:
         raise HTTPException(status_code=404, detail="romaneio not found")
 
@@ -153,7 +160,7 @@ async def delete_item_rom(
         db=db,
         filters={
             'item_id': {'operator': '==', 'value': item_id},
-            'romaneio.id': {'operator': '==', 'value': int(romaneio_in.replace('AR', '').lstrip('0'))},
+            'romaneio.romaneio_number': {'operator': '==', 'value': romaneio_in},
         }
     )
     if not _romaneio_item:

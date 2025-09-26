@@ -52,7 +52,7 @@ class RomaneioItemService:
                 volum_number=str(vol_num), kits=kits))
 
         return RomaneioItemResponse(
-            romaneio=str(romaneio_list[0].romaneio_id),
+            romaneio=str(romaneio_list[0].romaneio.romaneio_number),
             status=status_rom,
             location_id=location_id,
             volums=volumes
@@ -60,7 +60,7 @@ class RomaneioItemService:
 
     async def insere_novo_item(self, db: Session, romaneio_in: str, item: RomaneioItemPayload):
         logger.info("Consulta o romaneio")
-        romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
+        romaneio_id = int(romaneio_in[3:].lstrip('0'))
         existing_romaneio = await romaneio.get_last_by_filters(
             db=db,
             filters={
@@ -80,14 +80,14 @@ class RomaneioItemService:
         if item.location_id != 0:
             _filters = {
                 'item.serial': {'operator': '==', 'value': item.serial},
-                'item.product.client_name': {'operator': '==', 'value': item.client},
+                'item.product.client.client_code': {'operator': '==', 'value': item.client},
                 'item.status': {'operator': '==', 'value': 'IN_DEPOT'},
                 'item.location_id': {'operator': '==', 'value': item.location_id}
             }
         else:
             _filters = {
                 'item.serial': {'operator': '==', 'value': item.serial},
-                'item.product.client_name': {'operator': '==', 'value': item.client},
+                'item.product.client.client_code': {'operator': '==', 'value': item.client},
                 'item.status': {'operator': '==', 'value': 'IN_DEPOT'}
             }
 
@@ -148,7 +148,8 @@ class RomaneioItemService:
 
     async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 0):
         logger.info("Consulta o romaneio")
-        romaneio_id = int(romaneio_in.replace('AR', '').lstrip('0'))
+
+        romaneio_id = int(romaneio_in[3:].lstrip('0'))
         if location_id != 0:
             existing_romaneio = await romaneio.get_last_by_filters(
                 db=db,
@@ -172,7 +173,7 @@ class RomaneioItemService:
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=romaneio_id)
         if not romaneio_list:
             return RomaneioItemResponse(
-                romaneio=str(romaneio_id),
+                romaneio=romaneio_in,
                 status=existing_romaneio.status_rom,
                 location_id=existing_romaneio.location_id,
                 volums=[]

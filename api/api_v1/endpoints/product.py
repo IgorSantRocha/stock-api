@@ -37,7 +37,7 @@ async def read_products(
     """
     logger.info("Consultando products por client...")
 
-    _products = await product.get_multi_filter(db=db, filterby="client_name", filter=client)
+    _products = await product.get_multi_filter(db=db, filterby="client.client_code", filter=client)
     return _products
 
 

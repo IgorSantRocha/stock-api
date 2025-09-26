@@ -35,13 +35,13 @@ async def read_items_by_client(
     logger.info("Consultando products por client...")
     filters = [
         {"field": "status", "operator": "=", "value": status},
-        {"field": "product.client_name", "operator": "=", "value": client},
+        {"field": "product.client.client_code", "operator": "=", "value": client},
     ]
     if sales_channels:
         filters.append({"field": "location.sales_channel",
                        "operator": "in", "value": sales_channels})
 
-    itens = await item.list_with_filters(
+    itens = await item.get_multi_filters(
         db=db,
         filters=filters,
         order_by="created_at",
@@ -63,7 +63,7 @@ async def read_item(
     logger.info("Consultando products por client...")
     filters = {
         'serial': {'operator': '==', 'value': serial},
-        'product.client_name': {'operator': '==', 'value': client}
+        'product.client.client_code': {'operator': '==', 'value': client}
     }
 
     itens = await item.get_last_by_filters(
@@ -90,7 +90,7 @@ async def read_item(
     logger.info("Consultando products por client...")
     filters = {
         'serial': {'operator': '==', 'value': serial},
-        'product.client_name': {'operator': '==', 'value': client}
+        'product.client.client_code': {'operator': '==', 'value': client}
     }
 
     itens = await item.get_last_by_filters(
