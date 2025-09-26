@@ -7,6 +7,7 @@ class RomaneioBase(BaseModel):
     status_rom: Optional[str] = "ABERTO"  # default igual ao model
     created_by: str
     update_by: Optional[str] = None
+    client_name: str
 
 
 class RomaneioCreate(RomaneioBase):

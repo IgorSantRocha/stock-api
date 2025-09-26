@@ -132,7 +132,7 @@ async def put_romaneio(
     return _romaneio
 
 
-@router.delete(path="/{romaneio_in}/{id}", response_model=RomaneioItemResponse)
+@router.delete(path="/{romaneio_in}/", response_model=RomaneioItemResponse)
 async def delete_item_rom(
         romaneio_in: str,
         serial: str,

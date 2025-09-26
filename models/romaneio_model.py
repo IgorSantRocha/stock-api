@@ -1,18 +1,20 @@
-import enum
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, JSON, Enum, UniqueConstraint, func
+    Column, Integer, String, DateTime, ForeignKey, func, event
 )
 from sqlalchemy.orm import relationship
 from db.base_class import Base
-from sqlalchemy.orm import declarative_base
 
 
 class Romaneio(Base):
     __tablename__ = "logistic_stock_reverse"
+
     id = Column(Integer, primary_key=True)
+    client_id = Column(Integer, ForeignKey(
+        "logistic_stock_client.id"))
+    romaneio_number = Column(String, unique=True, index=True)
+
     location_id = Column(Integer, ForeignKey(
         "logistica_groupaditionalinformation.id"))
-
     status_rom = Column(String, nullable=False, default="ABERTO", index=True)
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
@@ -25,8 +27,26 @@ class Romaneio(Base):
         foreign_keys=[location_id],
         lazy="joined",
     )
-    # define reverse_item_name como AR0000id
+    client = relationship(
+        "Client",
+        foreign_keys=[client_id],
+        lazy="joined",
+    )
 
     @property
     def reverse_item_name(self):
-        return f"AR{str(self.id).zfill(5)}"
+        if not self.client_id or not self.id:
+            return None
+        return f"AR{self.client_id}{str(self.id).zfill(5)}"
+
+
+@event.listens_for(Romaneio, "before_insert")
+def generate_romaneio_number(mapper, connection, target):
+    if not target.client_id:
+        raise ValueError("client_id deve ser definido antes de salvar.")
+
+    next_id = connection.execute(
+        f"SELECT COALESCE(MAX(id), 0) + 1 FROM {Romaneio.__tablename__}"
+    ).scalar()
+
+    target.romaneio_number = f"AR{target.client_id}{str(next_id).zfill(5)}"

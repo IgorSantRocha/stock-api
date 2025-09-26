@@ -77,16 +77,24 @@ class RomaneioItemService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Romaneio inativo (Só é permitido inserir itens em romaneios com status 'ABERTO')",
             )
-
-        logger.info("Consulta o item pelo serial e client")
-        last_movement = await movement_crud.get_last_by_filters(
-            db=db,
-            filters={
+        if item.location_id != 0:
+            _filters = {
                 'item.serial': {'operator': '==', 'value': item.serial},
                 'item.product.client_name': {'operator': '==', 'value': item.client},
                 'item.status': {'operator': '==', 'value': 'IN_DEPOT'},
                 'item.location_id': {'operator': '==', 'value': item.location_id}
             }
+        else:
+            _filters = {
+                'item.serial': {'operator': '==', 'value': item.serial},
+                'item.product.client_name': {'operator': '==', 'value': item.client},
+                'item.status': {'operator': '==', 'value': 'IN_DEPOT'}
+            }
+
+        logger.info("Consulta o item pelo serial e client")
+        last_movement = await movement_crud.get_last_by_filters(
+            db=db,
+            filters=_filters
         )
 
         if not last_movement:
@@ -136,7 +144,7 @@ class RomaneioItemService:
 
         # consulto o romaneio atualizado e retorno a lista de items atrelados a ele
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=existing_romaneio.id)
-        return self.build_romaneio_response(romaneio_list, item.location_id, existing_romaneio.status_rom)
+        return self.build_romaneio_response(romaneio_list, existing_romaneio.location_id, existing_romaneio.status_rom)
 
     async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 0):
         logger.info("Consulta o romaneio")
