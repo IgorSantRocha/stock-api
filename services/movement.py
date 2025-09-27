@@ -8,10 +8,13 @@ from core.request import RequestClient
 from crud.crud_product import product
 from crud.crud_movement import movement
 from crud.crud_item import item
+from crud.crud_romaneio import romaneio_crud
+from crud.crud_romaneio_item import romaneio_crud_item
 
 from schemas.product_schema import ProductCreate, ProductUpdate, ProductInDbBase
 from schemas.item_schema import ItemCreate, ItemStatus, ItemUpdate, ItemInDbBase
 from schemas.movement_schema import MovementCreate, MovementPayload, MovementInDbBase, MovementType
+from schemas.romaneio_schema import RomaneioUpdate
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,43 @@ class MovementService:
 
         # default opcional
         return result
+
+    async def update_rom_by_movement(self, db: Session, romaneio_in: str, movement_type: str) -> None:
+        """
+        Atualiza o status do romaneio para 'FECHADO' se todos os itens estiverem com status 'WITH_CUSTOMER'
+        """
+        item_status_required = self._get_status(movement_type)
+        romaneio_id = romaneio_in[3:].lstrip('0')
+
+        _romaneio = await romaneio_crud.get(db=db, id=romaneio_id)
+        if not _romaneio:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Romaneio não encontrado.'
+            )
+        _items = await romaneio_crud_item.get_multi_filter(
+            db=db,
+            filterby='romaneio_id',
+            filter=romaneio_id
+        )
+        if not _items:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Nenhum item encontrado para esse romaneio.'
+            )
+        all_with_customer = True
+        for rom_item in _items:
+            _item = await item.get(db=db, id=rom_item.item_id)
+            if _item.status != item_status_required:
+                all_with_customer = False
+                break
+        if all_with_customer and _romaneio.status != 'FECHADO':
+            rom_update = RomaneioUpdate(
+                status='FECHADO'
+            )
+            _romaneio = await romaneio_crud.update(db=db, db_obj=_romaneio, obj_in=rom_update)
+
+        return _romaneio
 
     async def create_movement(self, db: Session, payload: MovementPayload) -> ItemInDbBase:
         """

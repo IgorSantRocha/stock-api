@@ -5,12 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from crud.crud_movement import movement
-from crud.crud_movement import movement
+from crud.crud_origin import origin
 from crud.crud_item import item
+from crud.crud_romaneio import romaneio_crud
 
 from schemas.product_schema import ProductCreate, ProductUpdate, ProductInDbBase
 from schemas.item_schema import ItemCreate, ItemUpdate, ItemInDbBase
 from schemas.movement_schema import MovementPayloadListItem, MovementPayload, MovementInDbBase
+from schemas.romaneio_schema import RomaneioInDbBase, RomaneioUpdate
 from services.movement import MovementService
 
 from api import deps
@@ -52,7 +54,12 @@ async def create_movement(
 
     service = MovementService()
     service_response = await service.create_movement(db=db, payload=payload)
-
+    # Se for um movimento de retorno, verifico se é do arancia e atualizo o romaneio
+    if payload.movement_type == 'RETURN':
+        origin_item = origin.get(db=db, id=payload.order_origin_id)
+        if origin_item and origin_item.origin_name == 'arancia' and origin_item.project_name == 'RETURN':
+            # obtenho o romaneio_id e atualizo o status para fechado
+            await service.update_rom_by_movement(db=db, romaneio_in=payload.order_number, movement_type=payload.movement_type.value)
     return service_response
 
 
@@ -106,4 +113,10 @@ async def create_movement(
         service_response = await service.create_movement(db=db, payload=payload_item)
         items.append(service_response)
 
+    # Se for um movimento de retorno, verifico se é do arancia e atualizo o romaneio
+    if payload.movement_type == 'RETURN':
+        origin_item = origin.get(db=db, id=payload.order_origin_id)
+        if origin_item and origin_item.origin_name == 'arancia' and origin_item.project_name == 'RETURN':
+            # obtenho o romaneio_id e atualizo o status para fechado
+            await service.update_rom_by_movement(db=db, romaneio_in=payload.order_number, movement_type=payload.movement_type.value)
     return items
