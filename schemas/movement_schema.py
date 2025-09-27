@@ -1,5 +1,5 @@
 import enum
-from typing import Optional, Any, Dict
+from typing import List, Optional, Any, Dict
 from datetime import datetime
 from pydantic import BaseModel, Field
 from schemas.item_schema import ItemPayload
@@ -66,6 +66,10 @@ class MovementPayload(BaseModel):
         example={"original_code": "209",
                  "original_message": "VOLUME RECEBIDO PARA CONFERENCIA"}
     )
+
+
+class MovementPayloadListItem(MovementPayload):
+    item: List[ItemPayload]
 
 
 class MovementBase(BaseModel):

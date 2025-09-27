@@ -10,7 +10,7 @@ from crud.crud_item import item
 
 from schemas.product_schema import ProductCreate, ProductUpdate, ProductInDbBase
 from schemas.item_schema import ItemCreate, ItemUpdate, ItemInDbBase
-from schemas.movement_schema import MovementCreate, MovementPayload, MovementInDbBase
+from schemas.movement_schema import MovementPayloadListItem, MovementPayload, MovementInDbBase
 from services.movement import MovementService
 
 from api import deps
@@ -54,3 +54,44 @@ async def create_movement(
     service_response = await service.create_movement(db=db, payload=payload)
 
     return service_response
+
+
+@router.post("/move-list-items", response_model=List[ItemInDbBase])
+async def create_movement(
+        *,
+        db: Session = Depends(deps.get_db_psql),
+        payload: MovementPayloadListItem,
+) -> Any:
+    """
+# Cria um novo movement
+
+### Detalhes
+- Para casos **Cielo**, o `product_id` pode ser igual a `0`
+- Nesse caso:
+    - Será feita a consulta síncrona para localizar o produto
+    - Caso não dê certo, retorna um erro pedindo que seja enviado `product_id`
+
+> **Nota:** Use sempre `product_id` quando disponível.
+"""
+
+    service = MovementService()
+    items = []
+    for item in payload.item:
+        payload_item = MovementPayload(
+            item=item,
+            client_name=payload.client_name,
+            movement_type=payload.movement_type,
+            from_location_id=payload.from_location_id,
+            to_location_id=payload.to_location_id,
+            order_origin_id=payload.order_origin_id,
+            order_number=payload.order_number,
+            volume_number=payload.volume_number,
+            kit_number=payload.kit_number,
+            created_by=payload.created_by,
+            extra_info=payload.extra_info if payload.extra_info else None,
+        )
+
+        service_response = await service.create_movement(db=db, payload=payload_item)
+        items.append(service_response)
+
+    return items

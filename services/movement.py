@@ -55,6 +55,11 @@ class MovementService:
                 status_code=status.HTTP_424_FAILED_DEPENDENCY,
                 detail='Item não encontrado. Para movimentações diferentes de IN, o item deve existir.'
             )
+        if _item.status != 'IN_DEPOT' and payload.movement_type.value != 'IN':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f'Item ({_item.serial}) com status ({_item.status}) inválido para esta movimentação.'
+            )
 
         if not _item:
             if payload.item.product_id == 0:
