@@ -77,6 +77,18 @@ async def create_movement(
     service = MovementService()
     items = []
     for item in payload.item:
+        if payload.volume_number:
+            item_volume_number = payload.volume_number
+            item_kit_number = payload.kit_number
+        else:
+            item_volume_number = str(
+                item.extra_info.get('volume_number', None))
+            item_kit_number = str(item.extra_info.get('kit_number', None))
+
+        if not item_volume_number or not item_kit_number:
+            raise HTTPException(
+                status_code=400, detail="É necessário informar o volume_number e kit_number, seja no payload geral ou em cada item.")
+
         payload_item = MovementPayload(
             item=item,
             client_name=payload.client_name,
@@ -85,8 +97,8 @@ async def create_movement(
             to_location_id=payload.to_location_id,
             order_origin_id=payload.order_origin_id,
             order_number=payload.order_number,
-            volume_number=payload.volume_number,
-            kit_number=payload.kit_number,
+            volume_number=str(item.extra_info.get('volume_number')),
+            kit_number=str(item.extra_info.get('kit_number')),
             created_by=payload.created_by,
             extra_info=payload.extra_info if payload.extra_info else None,
         )
