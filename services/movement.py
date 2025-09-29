@@ -41,7 +41,7 @@ class MovementService:
         Atualiza o status do romaneio para 'FECHADO' se todos os itens estiverem com status 'WITH_CUSTOMER'
         """
         item_status_required = self._get_status(movement_type)
-        romaneio_id = romaneio_in[3:].lstrip('0')
+        romaneio_id = int(romaneio_in[3:].lstrip('0'))
 
         _romaneio = await romaneio_crud.get(db=db, id=romaneio_id)
         if not _romaneio:
@@ -65,9 +65,9 @@ class MovementService:
             if _item.status != item_status_required:
                 all_with_customer = False
                 break
-        if all_with_customer and _romaneio.status != 'FECHADO':
+        if all_with_customer and _romaneio.status_rom != 'FECHADO':
             rom_update = RomaneioUpdate(
-                status='FECHADO'
+                status_rom='FECHADO'
             )
             _romaneio = await romaneio_crud.update(db=db, db_obj=_romaneio, obj_in=rom_update)
 

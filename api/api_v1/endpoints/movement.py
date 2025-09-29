@@ -114,9 +114,9 @@ async def create_movement(
         items.append(service_response)
 
     # Se for um movimento de retorno, verifico se é do arancia e atualizo o romaneio
-    if payload.movement_type == 'RETURN':
-        origin_item = origin.get(db=db, id=payload.order_origin_id)
-        if origin_item and origin_item.origin_name == 'arancia' and origin_item.project_name == 'RETURN':
+    if payload.movement_type.value == 'RETURN':
+        origin_item = await origin.get(db=db, id=payload.order_origin_id)
+        if origin_item and origin_item.origin_name == 'arancia' and origin_item.project_name == 'REVERSA':
             # obtenho o romaneio_id e atualizo o status para fechado
             await service.update_rom_by_movement(db=db, romaneio_in=payload.order_number, movement_type=payload.movement_type.value)
     return items

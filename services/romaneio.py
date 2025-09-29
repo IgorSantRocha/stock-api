@@ -82,13 +82,15 @@ class RomaneioItemService:
                 'item.serial': {'operator': '==', 'value': item.serial},
                 'item.product.client.client_code': {'operator': '==', 'value': item.client},
                 'item.status': {'operator': '==', 'value': 'IN_DEPOT'},
-                'item.location_id': {'operator': '==', 'value': item.location_id}
+                'item.location_id': {'operator': '==', 'value': item.location_id},
+                'movement_type': {'operator': '!=', 'value': 'ADJUST'}
             }
         else:
             _filters = {
                 'item.serial': {'operator': '==', 'value': item.serial},
                 'item.product.client.client_code': {'operator': '==', 'value': item.client},
-                'item.status': {'operator': '==', 'value': 'IN_DEPOT'}
+                'item.status': {'operator': '==', 'value': 'IN_DEPOT'},
+                'movement_type': {'operator': '!=', 'value': 'ADJUST'}
             }
 
         logger.info("Consulta o item pelo serial e client")
@@ -178,4 +180,4 @@ class RomaneioItemService:
                 location_id=existing_romaneio.location_id,
                 volums=[]
             )
-        return self.build_romaneio_response(romaneio_list, location_id, existing_romaneio.status_rom)
+        return self.build_romaneio_response(romaneio_list, existing_romaneio.location_id, existing_romaneio.status_rom)
