@@ -114,24 +114,27 @@ class RomaneioItemService:
         # inicio as validações de romaneio
         logger.info("Iniciando as validações de romaneio")
 
+        # verifico se o item está atrelado a outro romaneio em aberto ou pronto
+        existing_outher_romaneio_item = await romaneio_item.get_last_by_filters(
+            db=db,
+            filters={
+                'item_id': {'operator': '==', 'value': last_movement.item_id},
+                'romaneio.status_rom': {'operator': 'in', 'value': ['ABERTO', 'PRONTO']}
+            }
+        )
+        if existing_outher_romaneio_item:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item {last_movement.item.serial} já atrelado a outro romaneio em ABERTO ou PRONTO (Id do Romaneio: {existing_outher_romaneio_item.id})",
+            )
+
         existing_romaneio_item = await romaneio_item.get_last_by_filters(
             db=db,
             filters={
                 'romaneio_id': {'operator': '==', 'value': existing_romaneio.id},
                 'item_id': {'operator': '==', 'value': last_movement.item_id}
             })
-        # verifico se o item está atrelado a outro romaneio em aberto
-        existing_outher_romaneio_item = await romaneio_item.get_last_by_filters(
-            db=db,
-            filters={
-                'item_id': {'operator': '==', 'value': last_movement.item_id},
-                'romaneio.status_rom': {'operator': '==', 'value': 'ABERTO'}
-            })
-        if existing_outher_romaneio_item:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Item {last_movement.item.serial} já atrelado a outro romaneio em aberto (Romaneio: AR{str(existing_outher_romaneio_item.romaneio_id).zfill(6)})",
-            )
+
         if not existing_romaneio_item:
             obj_romaneio_item = RomaneioItemCreate(
                 romaneio_id=existing_romaneio.id,
