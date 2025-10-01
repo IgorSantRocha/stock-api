@@ -10,7 +10,6 @@ from crud.crud_romaneio_item import romaneio_crud_item as romaneio_item
 from crud.crud_romaneio import romaneio_crud as romaneio
 from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase
 from schemas.romaneio_item_schema import RomaneioItemResponse, RomaneioItemVolum, RomaneioItemKit
-from schemas.romaneio_schema import RomaneioCreate, RomaneioUpdate, RomaneioInDbBase
 
 
 from api import deps
@@ -122,18 +121,18 @@ class RomaneioItemService:
                 'romaneio.status_rom': {'operator': 'in', 'value': ['ABERTO', 'PRONTO']}
             }
         )
-        if existing_outher_romaneio_item:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Item {last_movement.item.serial} já atrelado a outro romaneio em ABERTO ou PRONTO (Id do Romaneio: {existing_outher_romaneio_item.id})",
-            )
-
         existing_romaneio_item = await romaneio_item.get_last_by_filters(
             db=db,
             filters={
                 'romaneio_id': {'operator': '==', 'value': existing_romaneio.id},
                 'item_id': {'operator': '==', 'value': last_movement.item_id}
             })
+
+        if existing_outher_romaneio_item and not existing_romaneio_item:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item {last_movement.item.serial} já atrelado a outro romaneio em ABERTO ou PRONTO (Id do Romaneio: {existing_romaneio.romaneio_number})",
+            )
 
         if not existing_romaneio_item:
             obj_romaneio_item = RomaneioItemCreate(
