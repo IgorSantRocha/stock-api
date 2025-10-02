@@ -38,17 +38,23 @@ class RomaneioItemService:
                 order_number=item.order_number,
                 created_by=item.created_by,
                 created_at=item.created_at
-
             )
             volumes_dict[vol_num][kit_num].append(item_volume)
 
         volumes = []
-        for vol_num, kits_dict in volumes_dict.items():
+        # 🔽 Ordena volumes em ordem decrescente
+        for vol_num, kits_dict in sorted(volumes_dict.items(), key=lambda x: x[0], reverse=True):
             kits = []
-            for kit_num, kit_items in kits_dict.items():
+            # 🔽 Ordena kits em ordem decrescente
+            for kit_num, kit_items in sorted(kits_dict.items(), key=lambda x: x[0], reverse=True):
                 kits.extend(kit_items)
-            volumes.append(RomaneioItemVolum(
-                volum_number=str(vol_num), kits=kits))
+
+            volumes.append(
+                RomaneioItemVolum(
+                    volum_number=str(vol_num),
+                    kits=kits
+                )
+            )
 
         return RomaneioItemResponse(
             romaneio=str(romaneio_list[0].romaneio.romaneio_number),
@@ -63,7 +69,7 @@ class RomaneioItemService:
         existing_romaneio = await romaneio.get_last_by_filters(
             db=db,
             filters={
-                'id': {'operator': '==', 'value': romaneio_id},
+                'romaneio_number': {'operator': '==', 'value': romaneio_in},
             }
         )
         # Se o romaneio não existir, retorna um erro
@@ -158,7 +164,7 @@ class RomaneioItemService:
             existing_romaneio = await romaneio.get_last_by_filters(
                 db=db,
                 filters={
-                    'id': {'operator': '==', 'value': romaneio_id},
+                    'romaneio_number': {'operator': '==', 'value': romaneio_in},
                     'location_id': {'operator': '==', 'value': location_id},
                 }
             )
@@ -166,7 +172,7 @@ class RomaneioItemService:
             existing_romaneio = await romaneio.get_last_by_filters(
                 db=db,
                 filters={
-                    'id': {'operator': '==', 'value': romaneio_id},
+                    'romaneio_number': {'operator': '==', 'value': romaneio_in},
                 }
             )
         # Se o romaneio não existir, retorna um erro

@@ -130,9 +130,9 @@ async def put_romaneio(
     if not _romaneio:
         raise HTTPException(status_code=404, detail="romaneio not found")
 
-    if _romaneio.created_by and not _romaneio.created_by.startswith('ARC'):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Não é permitido alterar este romaneio")
+    # if _romaneio.created_by and not _romaneio.created_by.startswith('ARC'):
+    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+    #                         detail="Não é permitido alterar este romaneio")
 
     logger.info("Deletando nova romaneio...")
     _romaneio = await romaneio.update(db=db, db_obj=_romaneio, obj_in=payload)
