@@ -1,6 +1,7 @@
 import datetime
 from typing import Optional
-from pydantic import BaseModel
+from zoneinfo import ZoneInfo
+from pydantic import BaseModel, field_serializer
 
 
 class RomaneioBase(BaseModel):
@@ -38,6 +39,15 @@ class RomaneioInDbBase(RomaneioBase):
     update_at: Optional[datetime.datetime] = None
     romaneio_number: str
     location_id: int
+
+    @field_serializer("created_at", "update_at", when_used="always")
+    def serialize_dt(self, dt: datetime.datetime | None):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            # se vier naive, assume que está em UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
 
     class Config:
         from_attributes = True  # importante p/ SQLAlchemy -> Pydantic

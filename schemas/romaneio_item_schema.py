@@ -1,6 +1,7 @@
 import datetime
 from typing import List, Optional
-from pydantic import BaseModel
+from zoneinfo import ZoneInfo
+from pydantic import BaseModel, field_serializer
 from schemas.product_schema import ProductInDbBase
 
 
@@ -11,6 +12,15 @@ class RomaneioItemKit(BaseModel):
     created_by: str
     created_at: datetime.datetime
     product_data: Optional[ProductInDbBase] = None
+
+    @field_serializer("created_at", when_used="always")
+    def serialize_dt(self, dt: datetime.datetime | None):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            # se vier naive, assume que está em UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
 
 
 class RomaneioItemVolum(BaseModel):
@@ -59,6 +69,15 @@ class RomaneioItemInDbBase(RomaneioItemBase):
     created_at: datetime.datetime
     order_number: str
     status: str
+
+    @field_serializer("created_at", when_used="always")
+    def serialize_dt(self, dt: datetime.datetime | None):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            # se vier naive, assume que está em UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
 
     class Config:
         from_attributes = True  # permite usar .from_orm()
