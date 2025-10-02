@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from crud.crud_product import product
+from crud.crud_client import client_crud
 from schemas.product_schema import ProductCreate, ProductUpdate, ProductInDbBase
 
 
@@ -49,7 +50,32 @@ async def create_product(
 ) -> Any:
     """
     # Cria um novo produto
+
+    ### Para o cliente CIELO, é obrigatório informar as medidas do produto em extra_info.measures. Exemplo:
+
+    ```
+    "extra_info": {
+        "measures": {
+        "width": 22.4,
+        "weight": 0.737,
+        "length": 18.3,
+        "height": 6.7,
+        "quantity": 1,
+        "price": 150.55
+        }
+    }
+    ```
+
     """
+    client = await client_crud.get_by_code(db=db, client_code=product_in.client_id)
+    if not client:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Cliente {product_in.client_id} não existe")
+
+    if client.client_code == 'cielo' and not product_in.extra_info.get('measures'):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Para o cliente CIELO, é obrigatório informar as medidas do produto em extra_info.measures")
+
     # verifica se o produto já existe, se existir, ignora a criação
     existing_product = await product.get_last_by_filters(
         db=db,
@@ -81,15 +107,24 @@ async def put_product(
     # Atualiza informações de um produto existente
     ### CUIDADO: Essa ação é irreversível!
     """
+    client = await client_crud.get_by_code(db=db, client_code=payload.client_id)
+    if not client:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Cliente {payload.client_id} não existe")
+
+    if client.client_code == 'cielo' and not payload.extra_info.get('measures'):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Para o cliente CIELO, é obrigatório informar as medidas do produto em extra_info.measures")
+
     _product = await product.get(db=db, id=id)
     if not _product:
         raise HTTPException(status_code=404, detail="product not found")
 
-    if _product.created_by and not _product.created_by.startswith('ARC'):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Não é permitido alterar este produto")
+    # if _product.created_by and not _product.created_by.startswith('ARC'):
+    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+    #                         detail="Não é permitido alterar este produto")
 
-    logger.info("Deletando nova product...")
+    logger.info("Atualizando product...")
     _product = await product.update(db=db, db_obj=_product, obj_in=payload)
     return _product
 
@@ -110,6 +145,6 @@ async def delete_product(
     _product = await product.get(db=db, id=id)
     if not _product:
         raise HTTPException(status_code=404, detail="product not found")
-    logger.info("Deletando nova product...")
+    logger.info("Deletando product...")
     _product = await product.remove(db=db, id=id)
     return _product

@@ -50,7 +50,7 @@ async def read_romaneio(
 ) -> Any:
     """
     # Consulta o romaneio informado
-    * Recebe o `romaneio_in` (str) no formato: AR00003 e extrai o ID desse romaneio (remove o AR e os zeros à esquerda)
+    * Recebe o `romaneio_in` (str) no formato: AR100000003 e extrai o ID desse romaneio (remove o AR e os zeros à esquerda)
     * Se o Romaneio não existe, retorna 404
 
     """
@@ -63,6 +63,27 @@ async def read_romaneio(
     return existing_romaneio
 
 
+@router.get("/{romaneio_in}/with-product", response_model=RomaneioItemResponse)
+async def read_romaneio(
+        romaneio_in: str,
+        location_id: int = None,
+        db: Session = Depends(deps.get_db_psql)
+) -> Any:
+    """
+    # Consulta o romaneio informado
+    * Recebe o `romaneio_in` (str) no formato: AR100000003 e extrai o ID desse romaneio (remove o AR e os zeros à esquerda)
+    * Se o Romaneio não existe, retorna 404
+
+    """
+    if not location_id and location_id != 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="É necessário informar o location_id")
+    service = RomaneioItemService()
+
+    existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in, location_id=location_id, show_products=True)
+    return existing_romaneio
+
+
 @router.post("/insert-items/{romaneio_in}", response_model=RomaneioItemResponse)
 async def insert_items_romaneio(
         romaneio_in: str,
@@ -72,7 +93,7 @@ async def insert_items_romaneio(
     # Insere os itens no romaneio informado
 
     ## Validações de romaneio
-    * Recebe o `romaneio_in` (str) no formato: AR00003 e extrai o ID desse romaneio (remove o AR e os zeros à esquerda)
+    * Recebe o `romaneio_in` (str) no formato: AR100000003 e extrai o ID desse romaneio (remove o AR e os zeros à esquerda)
     * Se o Romaneio não existe, retorna 404
 
     ## Validações de item

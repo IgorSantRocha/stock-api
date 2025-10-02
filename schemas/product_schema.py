@@ -21,7 +21,16 @@ class ProductBase(BaseModel):
     extra_info: Optional[dict[str, Any]] = Field(
         None,
         description="Informações adicionais em formato JSON",
-        example={"color": "black", "weight": "250g"}
+        example={
+            "measures": {
+                "width": 22.4,
+                "weight": 0.737,
+                "length": 18.3,
+                "height": 6.7,
+                "quantity": 1,
+                "price": 150.55
+            }
+        }
     )
 
     model_config = {"from_attributes": True}

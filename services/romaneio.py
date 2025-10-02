@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class RomaneioItemService:
-    def build_romaneio_response(self, romaneio_list, location_id: int, status_rom=None):
+    def build_romaneio_response(self, romaneio_list, location_id: int, status_rom=None, show_products: bool = False):
         volumes_dict = {}
 
         for idx, item in enumerate(romaneio_list, start=1):
@@ -32,12 +32,14 @@ class RomaneioItemService:
             if kit_num not in volumes_dict[vol_num]:
                 volumes_dict[vol_num][kit_num] = []
 
+            _product = item.item.product if show_products else None
             item_volume = RomaneioItemKit(
                 kit_number=str(item.kit_number),
                 serial=item.item.serial,
                 order_number=item.order_number,
                 created_by=item.created_by,
-                created_at=item.created_at
+                created_at=item.created_at,
+                product_data=_product
             )
             volumes_dict[vol_num][kit_num].append(item_volume)
 
@@ -156,7 +158,7 @@ class RomaneioItemService:
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=existing_romaneio.id)
         return self.build_romaneio_response(romaneio_list, existing_romaneio.location_id, existing_romaneio.status_rom)
 
-    async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 0):
+    async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 0, show_products: bool = False):
         logger.info("Consulta o romaneio")
 
         romaneio_id = int(romaneio_in[3:].lstrip('0'))
@@ -188,4 +190,4 @@ class RomaneioItemService:
                 location_id=existing_romaneio.location_id,
                 volums=[]
             )
-        return self.build_romaneio_response(romaneio_list, existing_romaneio.location_id, existing_romaneio.status_rom)
+        return self.build_romaneio_response(romaneio_list, existing_romaneio.location_id, existing_romaneio.status_rom, show_products)

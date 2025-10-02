@@ -1,6 +1,7 @@
 import datetime
 from typing import List, Optional
 from pydantic import BaseModel
+from schemas.product_schema import ProductInDbBase
 
 
 class RomaneioItemKit(BaseModel):
@@ -9,6 +10,7 @@ class RomaneioItemKit(BaseModel):
     order_number: str
     created_by: str
     created_at: datetime.datetime
+    product_data: Optional[ProductInDbBase] = None
 
 
 class RomaneioItemVolum(BaseModel):
