@@ -67,7 +67,7 @@ async def create_product(
     ```
 
     """
-    client = await client_crud.get_by_code(db=db, client_code=product_in.client_id)
+    client = await client_crud.get(db=db, id=product_in.client_id)
     if not client:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Cliente {product_in.client_id} não existe")
@@ -107,7 +107,7 @@ async def put_product(
     # Atualiza informações de um produto existente
     ### CUIDADO: Essa ação é irreversível!
     """
-    client = await client_crud.get_by_code(db=db, client_code=payload.client_id)
+    client = await client_crud.get(db=db, id=payload.client_id)
     if not client:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Cliente {payload.client_id} não existe")

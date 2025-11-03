@@ -1,6 +1,8 @@
 from crud.baseAsync import CRUDBase
 from models.product_model import Product as Model
-from schemas.product_schema import ProductCreate as SchemaCreate, ProductUpdate as SchemaUpdate
+from schemas.product_schema import (
+    ProductCreate as SchemaCreate,
+    ProductUpdate as SchemaUpdate)
 
 
 class CRUDItem(CRUDBase[Model, SchemaCreate, SchemaUpdate]):

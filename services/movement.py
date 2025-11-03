@@ -129,7 +129,7 @@ class MovementService:
                     if not _product:
                         product_in = ProductCreate(
                             category=result['ZTIPO'],
-                            client_name='cielo',
+                            client_id=1,
                             description=result['SHTXT'],
                             sku=result['MATNR'],
                             created_by='SAP'
