@@ -132,7 +132,18 @@ class MovementService:
                             client_id=1,
                             description=result['SHTXT'],
                             sku=result['MATNR'],
-                            created_by='SAP'
+                            created_by='SAP',
+                            extra_info={
+                                "measures": {
+                                    "width": 22.4,
+                                    "weight": 0.737,
+                                    "length": 18.3,
+                                    "height": 6.7,
+                                    "quantity": 1,
+                                    "price": 150.55
+                                },
+                                "alert": "Produto criado automaticamente via integração com o SAP."
+                            }
                         )
                         _product = await product.create(db=db, obj_in=product_in)
 
