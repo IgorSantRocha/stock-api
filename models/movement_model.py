@@ -34,7 +34,9 @@ class Movement(Base):
     created_by = Column(String)
 
     # Relacionamentos
-    item = relationship("Item")
+    item = relationship("Item",
+                        foreign_keys=[item_id],
+                        lazy="joined",)
     origin = relationship("OrderOrigin", lazy="joined")
 
     from_location = relationship(

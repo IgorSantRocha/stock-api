@@ -153,7 +153,7 @@ class MovementService:
                     # Se não encontrar, retorno um erro para que o usuário informe o product_id
                     raise HTTPException(
                         status_code=status.HTTP_424_FAILED_DEPENDENCY,
-                        detail='Não foi possível localizar o serial. Informe o produto e tente novamente.'
+                        detail=f'Não foi possível localizar o serial {payload.item.serial}. Informe o produto e tente novamente. Erro: {str(e)}'
                     )
 
             logger.info("Item não encontrado, criando novo item...")
@@ -184,10 +184,21 @@ class MovementService:
         logger.info(f"Movement criado com ID: {_movement.id}")
         logger.info("Atualizando item...")
 
+        if payload.movement_type.value == 'IN':
+            last_in_movement_id = _movement.id
+        else:
+            last_in_movement_id = _item.last_in_movement_id
+
+        if payload.movement_type.value != 'IN':
+            last_out_movement_id = _movement.id
+        else:
+            last_out_movement_id = _item.last_out_movement_id
+
         item_update = ItemUpdate(
             location_id=payload.to_location_id,
-            status=self._get_status(payload.movement_type.value)
-
+            status=self._get_status(payload.movement_type.value),
+            last_in_movement_id=last_in_movement_id,
+            last_out_movement_id=last_out_movement_id
         )
         _item = await item.update(db=db, db_obj=_item, obj_in=item_update)
         return _item

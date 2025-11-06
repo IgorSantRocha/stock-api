@@ -18,6 +18,17 @@ class Item(Base):
     status = Column(String, nullable=False, index=True)
     location_id = Column(Integer, ForeignKey(
         "logistica_groupaditionalinformation.id"), nullable=False, index=True)
+
+    last_in_movement_id = Column(Integer, ForeignKey(
+        "logistic_stock_movement.id"), nullable=True)
+    last_out_movement_id = Column(Integer, ForeignKey(
+        "logistic_stock_movement.id"), nullable=True)
+
     extra_info = Column(JSON)
+
+    last_in_movement = relationship("Movement", foreign_keys=[
+        last_in_movement_id], lazy="selectin")
+    last_out_movement = relationship(
+        "Movement", foreign_keys=[last_out_movement_id], lazy="selectin")
     product = relationship("Product", lazy="selectin")
     location = relationship("Location", lazy="selectin")

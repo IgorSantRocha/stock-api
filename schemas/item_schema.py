@@ -30,6 +30,8 @@ class ItemBase(BaseModel):
     )
     extra_info: Optional[dict[str, Any]] = None
     location_id: int
+    last_in_movement_id: Optional[int] = None
+    last_out_movement_id: Optional[int] = None
     # Pydantic v2
     model_config = {"from_attributes": True}
     # Se estiver em Pydantic v1, use:
@@ -48,6 +50,8 @@ class ItemUpdate(BaseModel):
         example=ItemStatus.IN_DEPOT
     )
     location_id: int
+    last_in_movement_id: Optional[int] = None
+    last_out_movement_id: Optional[int] = None
 
 
 class ItemInDbBase(ItemBase):

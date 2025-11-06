@@ -8,6 +8,7 @@ from core.config import settings
 # Importa o Base e, MUITO IMPORTANTE, registra todos os modelos no metadata:
 from db.base_class import Base
 import db.base  # <- garante que todas as tabelas sejam anexadas ao Base.metadata
+from models import *  # noqa: F403,F401
 
 # Alembic config
 config = context.config

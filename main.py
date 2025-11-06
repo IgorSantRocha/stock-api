@@ -4,8 +4,6 @@ import logging
 import uvicorn
 from api.api_v1.api import api_router
 from core.config import settings
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
 from core.logging_config import setup_logging

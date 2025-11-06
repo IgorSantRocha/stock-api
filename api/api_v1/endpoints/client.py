@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=List[ClientInDBBaseSC])
-async def read_origins(
+async def read_clients(
         db: Session = Depends(deps.get_db_psql),
         skip: int = 0,
         limit: int = 100,
@@ -23,26 +23,26 @@ async def read_origins(
     """
     # Consulta todas os clientes possíveis
     """
-    logger.info("Consultando origins...")
+    logger.info("Consultando clients...")
     return await client_crud.get_multi(db=db, skip=skip, limit=limit)
 
 
 @router.post("/", response_model=ClientInDBBaseSC)
-async def create_origin(
+async def create_client(
         *,
         db: Session = Depends(deps.get_db_psql),
-        origin_in: ClientCreateSC,
+        client_in: ClientCreateSC,
 ) -> Any:
     """
     # Cria um novo cliente
     """
-    logger.info("Criando nova origin...")
-    _client = await client_crud.create(db=db, obj_in=origin_in)
+    logger.info("Criando nova client...")
+    _client = await client_crud.create(db=db, obj_in=client_in)
     return _client
 
 
 @router.delete(path="/{id}", response_model=ClientInDBBaseSC)
-async def delete_origin(
+async def delete_client(
         *,
         db: Session = Depends(deps.get_db_psql),
         id: int,
@@ -56,8 +56,8 @@ async def delete_origin(
     """
     _client = await client_crud.get(db=db, id=id)
     if not _client:
-        raise HTTPException(status_code=404, detail="origin not found")
-    logger.info("Deletando nova origin...")
+        raise HTTPException(status_code=404, detail="client not found")
+    logger.info("Deletando nova client...")
     _client = await client_crud.remove(db=db, id=id)
     return _client
 # exemplo
