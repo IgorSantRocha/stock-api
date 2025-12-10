@@ -41,7 +41,10 @@ class MovementService:
         Atualiza o status do romaneio para 'FECHADO' se todos os itens estiverem com status 'WITH_CUSTOMER'
         """
         item_status_required = self._get_status(movement_type)
-        romaneio_id = int(romaneio_in[3:].lstrip('0'))
+        if romaneio_in.startswith('AR1'):
+            romaneio_id = int(romaneio_in[5:].lstrip('0'))
+        else:
+            romaneio_id = int(romaneio_in[3:].lstrip('0'))
 
         _romaneio = await romaneio_crud.get(db=db, id=romaneio_id)
         if not _romaneio:
@@ -102,12 +105,7 @@ class MovementService:
             )
 
         if not _item:
-            if payload.item.product_id == 0:
-                if payload.client_name != 'cielo':
-                    raise HTTPException(
-                        status_code=status.HTTP_424_FAILED_DEPENDENCY,
-                        detail='Para este cliente, é necessário informar o produto'
-                    )
+            if payload.client_name == 'cielo':
                 # Vou tentar localizar o serial na consulta síncrona da Cielo e pegar as informações do produto
                 request_data = {"SERGE": payload.item.serial}
 
@@ -120,7 +118,13 @@ class MovementService:
                 )
                 try:
                     result = await request.send_api_request()
-                    # Se achar, consulto o produto pelo sku pra ver se tem cadastro, se não tiver, crio
+                    payload.item.extra_info['consulta_sincrona'] = 'OK'
+                except Exception as e:
+                    result = False
+
+                # Se achar, consulto o produto pelo sku pra ver se tem cadastro, se não tiver, crio
+
+                if result:
                     _product = await product.get_last_by_filters(
                         db=db,
                         filters={
@@ -149,12 +153,8 @@ class MovementService:
 
                     payload.item.product_id = _product.id
 
-                except Exception as e:
-                    # Se não encontrar, retorno um erro para que o usuário informe o product_id
-                    raise HTTPException(
-                        status_code=status.HTTP_424_FAILED_DEPENDENCY,
-                        detail=f'Não foi possível localizar o serial {payload.item.serial}. Informe o produto e tente novamente. Erro: {str(e)}'
-                    )
+            if payload.item.product_id == 0:
+                pass  # tratamento de erros de product
 
             logger.info("Item não encontrado, criando novo item...")
             item_in = ItemCreate(
@@ -162,7 +162,7 @@ class MovementService:
                 serial=payload.item.serial,
                 status=self._get_status(payload.movement_type.value),
                 extra_info=payload.item.extra_info,
-                location_id=payload.to_location_id
+                location_id=payload.to_location_id if payload.to_location_id else payload.from_location_id,
             )
             _item = await item.create(db=db, obj_in=item_in)
             logger.info(f"Item criado com ID: {_item.id}")
@@ -173,7 +173,7 @@ class MovementService:
             item_id=_item.id,
             order_origin_id=payload.order_origin_id,
             from_location_id=payload.from_location_id,
-            to_location_id=payload.to_location_id,
+            to_location_id=payload.to_location_id if payload.to_location_id else None,
             order_number=payload.order_number,
             volume_number=payload.volume_number,
             kit_number=payload.kit_number,
@@ -195,7 +195,7 @@ class MovementService:
             last_out_movement_id = _item.last_out_movement_id
 
         item_update = ItemUpdate(
-            location_id=payload.to_location_id,
+            location_id=payload.to_location_id if payload.to_location_id else payload.from_location_id,
             status=self._get_status(payload.movement_type.value),
             last_in_movement_id=last_in_movement_id,
             last_out_movement_id=last_out_movement_id

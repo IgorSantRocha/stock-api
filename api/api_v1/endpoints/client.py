@@ -1,7 +1,7 @@
 from typing import Any, List
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from crud.crud_client import client_crud
@@ -36,6 +36,7 @@ async def create_client(
     """
     # Cria um novo cliente
     """
+    client_in.client_code = client_in.client_code.lower()
     logger.info("Criando nova client...")
     _client = await client_crud.create(db=db, obj_in=client_in)
     return _client
@@ -61,3 +62,23 @@ async def delete_client(
     _client = await client_crud.remove(db=db, id=id)
     return _client
 # exemplo
+
+
+@router.put(path="/{id}", response_model=ClientInDBBaseSC)
+async def put_client(
+        *,
+        db: Session = Depends(deps.get_db_psql),
+        id: int,
+        payload: ClientUpdateSC
+) -> Any:
+    """
+    # Atualiza informações de um produto existente
+    ### CUIDADO: Essa ação é irreversível!
+    """
+    client = await client_crud.get(db=db, id=id)
+    if not client:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Cliente {id} não existe")
+    payload.client_code = payload.client_code.lower()
+    _client = await client_crud.update(db=db, db_obj=client, obj_in=payload)
+    return _client

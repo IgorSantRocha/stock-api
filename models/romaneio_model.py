@@ -45,4 +45,7 @@ def generate_romaneio_number(mapper, connection, target):
     )
     next_id = result.scalar()
 
-    target.romaneio_number = f"AR{target.client_id}{str(next_id).zfill(8)}"
+    if target.client_id == 1:
+        target.romaneio_number = f"AR{target.client_id}05{str(next_id).zfill(10)}"
+    else:
+        target.romaneio_number = f"AR{target.client_id}{str(next_id).zfill(8)}"

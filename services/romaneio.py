@@ -67,7 +67,7 @@ class RomaneioItemService:
 
     async def insere_novo_item(self, db: Session, romaneio_in: str, item: RomaneioItemPayload):
         logger.info("Consulta o romaneio")
-        romaneio_id = int(romaneio_in[3:].lstrip('0'))
+
         existing_romaneio = await romaneio.get_last_by_filters(
             db=db,
             filters={
@@ -126,7 +126,8 @@ class RomaneioItemService:
             db=db,
             filters={
                 'item_id': {'operator': '==', 'value': last_movement.item_id},
-                'romaneio.status_rom': {'operator': 'in', 'value': ['ABERTO', 'PRONTO']}
+                'romaneio.status_rom': {'operator': 'in', 'value': ['ABERTO', 'PRONTO']},
+                'romaneio.id': {'operator': '!=', 'value': existing_romaneio.id}
             }
         )
         existing_romaneio_item = await romaneio_item.get_last_by_filters(
@@ -139,7 +140,7 @@ class RomaneioItemService:
         if existing_outher_romaneio_item and not existing_romaneio_item:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Item {last_movement.item.serial} já atrelado a outro romaneio em ABERTO ou PRONTO (Id do Romaneio: {existing_romaneio.romaneio_number})",
+                detail=f"Item {last_movement.item.serial} já atrelado a outro romaneio em ABERTO ou PRONTO (Id do Romaneio: {existing_outher_romaneio_item.romaneio_id})",
             )
 
         if not existing_romaneio_item:
@@ -161,7 +162,11 @@ class RomaneioItemService:
     async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 0, show_products: bool = False):
         logger.info("Consulta o romaneio")
 
-        romaneio_id = int(romaneio_in[3:].lstrip('0'))
+        if romaneio_in.startswith('AR1'):
+            romaneio_id = int(romaneio_in[5:].lstrip('0'))
+        else:
+            romaneio_id = int(romaneio_in[3:].lstrip('0'))
+
         if location_id != 0:
             existing_romaneio = await romaneio.get_last_by_filters(
                 db=db,

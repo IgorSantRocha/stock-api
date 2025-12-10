@@ -13,6 +13,7 @@ class MovementType(enum.Enum):
     RETURN = "RETURN"  # reversa
     TRANSFER = "TRANSFER"
     ADJUST = "ADJUST"
+    ERROR = "ERROR"
 
 
 class MovementPayload(BaseModel):
