@@ -54,8 +54,27 @@ class ItemUpdate(BaseModel):
     last_out_movement_id: Optional[int] = None
 
 
+class ItemProductUpdate(BaseModel):
+    product_id: int
+
+
 class ItemInDbBase(ItemBase):
     id: int
+
+
+class ItemInDbListBase(BaseModel):
+    id: int
+    serial: str
+    status: ItemStatus = Field(
+        ...,
+        description=f"Status atual do item. Opções: {[e.value for e in ItemStatus]}",
+        example=ItemStatus.IN_DEPOT
+    )
+    location_name: str
+    product_sku: str
+    product_description: str
+    produtct_category: str
+    extra_info: Optional[dict[str, Any]] = None
 
 
 class ItemPedidoInDbBase(ItemBase):

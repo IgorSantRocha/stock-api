@@ -6,13 +6,67 @@ from sqlalchemy.orm import Session
 
 from crud.crud_movement import movement
 from crud.crud_item import item
-from schemas.item_schema import ItemCreate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase
+
+from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase
 
 
 from api import deps
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+@router.get("/list-byid/{client}", response_model=List[ItemInDbListBase])
+async def read_items_by_client(
+        client: str,
+        status: str,
+        locations_ids: Annotated[
+            list[int] | None,
+            Query(description="IDs das locations (pode repetir parâmetro)")
+        ] = None,
+        db: Session = Depends(deps.get_db_psql)
+) -> Any:
+    """
+    # Consulta os items por client e status
+
+    ### Opções de status:
+    - `IN_DEPOT` -> Item no depósito
+    - `IN_TRANSIT` -> Item em trânsito
+    - `WITH_CLIENT` -> Item está em posse do contratante ou um de seus representantes
+    - `WITH_CUSTOMER` -> Item está em posse do cliente final (instalado)
+
+    ### Ao usar lista de locations_ids, retorna apenas items que estejam em uma das locations informadas:
+    - Exemplo: `?locations_ids=1&locations_ids=2&locations_ids=11`
+    """
+
+    logger.info("Consultando products por client...")
+
+    filters = [
+        {"field": "status", "operator": "=", "value": status},
+        {"field": "product.client.client_code", "operator": "=", "value": client},
+    ]
+
+    if locations_ids:
+        filters.append({
+            "field": "location.id",
+            "operator": "in",
+            "value": locations_ids  # já vem como lista[int]
+        })
+
+    itens = await item.get_multi_filters(
+        db=db,
+        filters=filters,
+        order_by="created_at",
+        order_desc=True,
+        distinct_on_id=True,  # ativa DISTINCT ON (Item.id)
+    )
+    for _item in itens:
+        _item.location_name = f'PA_{_item.location.cod_iata}'
+        _item.product_sku = _item.product.sku
+        _item.product_description = _item.product.description
+        _item.produtct_category = _item.product.category
+
+    return itens
 
 
 @router.get("/list/{client}", response_model=List[ItemInDbBase])
@@ -118,3 +172,23 @@ async def read_item(
     itens.in_order_number = movimento.order_number
 
     return itens
+
+
+@router.put(path="/{id}", response_model=ItemInDbBase)
+async def put_item(
+        *,
+        db: Session = Depends(deps.get_db_psql),
+        id: int,
+        payload: ItemProductUpdate
+) -> Any:
+    """
+    # Atualiza informações de um produto existente
+    ### CUIDADO: Essa ação é irreversível!
+    """
+    _item = await item.get(db=db, id=id)
+    if not _item:
+        raise HTTPException(status_code=404, detail="item not found")
+
+    logger.info("Atualizando item...")
+    _item = await item.update(db=db, db_obj=_item, obj_in=payload)
+    return _item
