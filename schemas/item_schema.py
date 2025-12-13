@@ -1,3 +1,4 @@
+import datetime
 import enum
 from typing import Optional, Any
 from pydantic import BaseModel, Field
@@ -74,6 +75,8 @@ class ItemInDbListBase(BaseModel):
     product_sku: str
     product_description: str
     produtct_category: str
+    last_movement_in_date: Optional[datetime.datetime] = None
+    stock_type: Optional[str] = None
     extra_info: Optional[dict[str, Any]] = None
 
 
