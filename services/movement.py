@@ -12,7 +12,7 @@ from crud.crud_romaneio import romaneio_crud
 from crud.crud_romaneio_item import romaneio_crud_item
 
 from schemas.product_schema import ProductCreate, ProductUpdate, ProductInDbBase
-from schemas.item_schema import ItemCreate, ItemStatus, ItemUpdate, ItemInDbBase
+from schemas.item_schema import ItemCreate, ItemProductUpdate, ItemStatus, ItemUpdate, ItemInDbBase
 from schemas.movement_schema import MovementCreate, MovementPayload, MovementInDbBase, MovementType
 from schemas.romaneio_schema import RomaneioUpdate
 
@@ -30,6 +30,7 @@ class MovementService:
             MovementType.TRANSFER.value: ItemStatus.IN_TRANSIT.value,
             MovementType.RETURN.value: ItemStatus.WITH_CLIENT.value,
             MovementType.ADJUST.value: ItemStatus.IN_DEPOT.value,
+            MovementType.COLLECTED.value: ItemStatus.IN_TRANSIT.value,
         }
         result = status_map.get(movement_type)
 
@@ -93,12 +94,12 @@ class MovementService:
                 'serial': {'operator': '==', 'value': payload.item.serial}
             })
 
-        if not _item and payload.movement_type.value != 'IN':
+        if not _item and payload.movement_type.value not in ['IN', 'COLLECTED']:
             raise HTTPException(
                 status_code=status.HTTP_424_FAILED_DEPENDENCY,
                 detail='Item não encontrado. Para movimentações diferentes de IN, o item deve existir.'
             )
-        if payload.movement_type.value != 'IN' and _item.status != 'IN_DEPOT':
+        if payload.movement_type.value not in ['IN', 'COLLECTED'] and _item.status != 'IN_DEPOT':
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f'Item ({_item.serial}) com status ({_item.status}) inválido para esta movimentação.'
@@ -153,17 +154,20 @@ class MovementService:
 
                     payload.item.product_id = _product.id
 
-            if payload.item.product_id == 0:
-                pass  # tratamento de erros de product
+            if payload.item.product_id == 0 and payload.movement_type.value != 'COLLECTED':
+                raise HTTPException(
+                    status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                    detail=f'Para movimentações {payload.movement_type}, o product_id deve ser informado.')
 
             logger.info("Item não encontrado, criando novo item...")
             item_in = ItemCreate(
-                product_id=payload.item.product_id,
+                product_id=payload.item.product_id if payload.item.product_id != 0 else None,
                 serial=payload.item.serial,
                 status=self._get_status(payload.movement_type.value),
                 extra_info=payload.item.extra_info,
                 location_id=payload.to_location_id if payload.to_location_id else payload.from_location_id,
             )
+
             _item = await item.create(db=db, obj_in=item_in)
             logger.info(f"Item criado com ID: {_item.id}")
 
@@ -194,6 +198,12 @@ class MovementService:
         else:
             last_out_movement_id = _item.last_out_movement_id
 
+        if _item.product_id is None and payload.item.product_id and payload.item.product_id != 0:
+            item_product_update = ItemProductUpdate(
+                product_id=payload.item.product_id
+            )
+            _item = await item.update(db=db, db_obj=_item, obj_in=item_product_update)
+
         item_update = ItemUpdate(
             location_id=payload.to_location_id if payload.to_location_id else payload.from_location_id,
             status=self._get_status(payload.movement_type.value),
@@ -201,4 +211,5 @@ class MovementService:
             last_out_movement_id=last_out_movement_id
         )
         _item = await item.update(db=db, db_obj=_item, obj_in=item_update)
+
         return _item

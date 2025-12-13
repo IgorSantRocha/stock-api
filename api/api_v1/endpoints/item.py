@@ -69,7 +69,7 @@ async def read_items_by_client(
         limit=limit,
     )
     for _item in itens:
-        _item.location_name = f'PA_{_item.location.cod_iata}'
+        _item.location_name = f'PA_{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
         _item.product_sku = _item.product.sku
         _item.product_description = _item.product.description
         _item.produtct_category = _item.product.category
@@ -129,7 +129,7 @@ async def export_items_by_client(
     )
     from_locations_str = ''
     for _item in result:
-        _item.location_name = f'PA_{_item.location.cod_iata}'
+        _item.location_name = f'PA_{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
         _item.product_sku = _item.product.sku
         _item.product_description = _item.product.description
         _item.produtct_category = _item.product.category
@@ -221,7 +221,7 @@ async def read_items_by_client(
     return itens
 
 
-@router.get("/{serial}", response_model=ItemInDbBase)
+@router.get("/{serial}", response_model=ItemInDbListBase)
 async def read_item(
         client: str,
         serial: str,
@@ -236,16 +236,23 @@ async def read_item(
         'product.client.client_code': {'operator': '==', 'value': client}
     }
 
-    itens = await item.get_last_by_filters(
+    _item = await item.get_last_by_filters(
         db=db,
         filters=filters,
     )
-    if not itens:
+    if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
         )
-    return itens
+
+    _item.location_name = f'PA_{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
+    _item.product_sku = _item.product.sku
+    _item.product_description = _item.product.description
+    _item.produtct_category = _item.product.category
+    _item.last_movement_in_date = _item.last_in_movement.created_at if _item.last_in_movement else None
+    _item.stock_type = _item.last_in_movement.origin.stock_type if _item.last_in_movement else None
+    return _item
 
 
 @router.get("/{serial}/pedido", response_model=ItemPedidoInDbBase)

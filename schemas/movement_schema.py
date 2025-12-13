@@ -14,6 +14,7 @@ class MovementType(enum.Enum):
     TRANSFER = "TRANSFER"
     ADJUST = "ADJUST"
     ERROR = "ERROR"
+    COLLECTED = "COLLECTED"
 
 
 class MovementPayload(BaseModel):

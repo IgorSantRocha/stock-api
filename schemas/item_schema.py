@@ -22,7 +22,7 @@ class ItemPayload(BaseModel):
 
 
 class ItemBase(BaseModel):
-    product_id: int
+    product_id: Optional[int] = None
     serial: str
     status: ItemStatus = Field(
         ...,
@@ -33,7 +33,7 @@ class ItemBase(BaseModel):
     location_id: int
     last_in_movement_id: Optional[int] = None
     last_out_movement_id: Optional[int] = None
-    stock_type: Optional[str] = None
+
     # Pydantic v2
     model_config = {"from_attributes": True}
     # Se estiver em Pydantic v1, use:
@@ -41,8 +41,24 @@ class ItemBase(BaseModel):
     #     orm_mode = True
 
 
-class ItemCreate(ItemBase):
-    pass
+class ItemCreate(BaseModel):
+    product_id: Optional[int] = None
+    serial: str
+    status: ItemStatus = Field(
+        ...,
+        description=f"Status atual do item. Opções: {[e.value for e in ItemStatus]}",
+        example=ItemStatus.IN_DEPOT
+    )
+    extra_info: Optional[dict[str, Any]] = None
+    location_id: int
+    last_in_movement_id: Optional[int] = None
+    last_out_movement_id: Optional[int] = None
+
+    # Pydantic v2
+    model_config = {"from_attributes": True}
+    # Se estiver em Pydantic v1, use:
+    # class Config:
+    #     orm_mode = True
 
 
 class ItemUpdate(BaseModel):

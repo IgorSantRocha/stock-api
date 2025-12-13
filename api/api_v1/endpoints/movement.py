@@ -44,10 +44,9 @@ async def create_movement(
 # Cria um novo movement
 
 ### Detalhes
-- Para casos **Cielo**, o `product_id` pode ser igual a `0`
+- Para casos de **COLETA** do **APP**, o `product_id` pode ser igual a `0`
 - Nesse caso:
-    - Será feita a consulta síncrona para localizar o produto
-    - Caso não dê certo, retorna um erro pedindo que seja enviado `product_id`
+    - use `COLLECTED` como `movement_type`
 
 > **Nota:** Use sempre `product_id` quando disponível.
 """
@@ -73,10 +72,9 @@ async def create_movement(
 # Cria um novo movement
 
 ### Detalhes
-- Para casos **Cielo**, o `product_id` pode ser igual a `0`
+- Para casos de **COLETA** do **APP**, o `product_id` pode ser igual a `0`
 - Nesse caso:
-    - Será feita a consulta síncrona para localizar o produto
-    - Caso não dê certo, retorna um erro pedindo que seja enviado `product_id`
+    - use `COLLECTED` como `movement_type`
 
 > **Nota:** Use sempre `product_id` quando disponível.
 """
