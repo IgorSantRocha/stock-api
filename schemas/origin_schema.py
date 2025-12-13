@@ -16,7 +16,11 @@ class OrderOriginBase(BaseModel):
     client_id: int = Field(...,
                            description="Id do cliente associado ao produto",
                            example="cielo = 1")
-
+    stock_type: Optional[str] = Field(
+        None,
+        description="Tipo de estoque associado à origem (ex.: 'Aguardando Reversa', 'Suprimento P/ Entrega')",
+        example="Aguardando Reversa"
+    )
     model_config = {
         "from_attributes": True,
         "populate_by_name": True  # permite aceitar tanto 'origin_name' quanto 'nome_origem'

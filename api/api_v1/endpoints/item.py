@@ -74,7 +74,7 @@ async def read_items_by_client(
         _item.product_description = _item.product.description
         _item.produtct_category = _item.product.category
         _item.last_movement_in_date = _item.last_in_movement.created_at if _item.last_in_movement else None
-        _item.stock_type = _item.last_in_movement.origin.project_name if _item.last_in_movement else None
+        _item.stock_type = _item.last_in_movement.origin.stock_type if _item.last_in_movement else None
 
     return itens
 
@@ -134,7 +134,7 @@ async def export_items_by_client(
         _item.product_description = _item.product.description
         _item.produtct_category = _item.product.category
         _item.last_movement_in_date = _item.last_in_movement.created_at if _item.last_in_movement else None
-        _item.stock_type = _item.last_in_movement.origin.project_name if _item.last_in_movement else None
+        _item.stock_type = _item.last_in_movement.origin.stock_type if _item.last_in_movement else None
         if from_locations_str != '':
             from_locations_str += f'_and_{_item.location_name}' if _item.location_name not in from_locations_str else ''
         else:

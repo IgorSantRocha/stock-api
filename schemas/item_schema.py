@@ -33,6 +33,7 @@ class ItemBase(BaseModel):
     location_id: int
     last_in_movement_id: Optional[int] = None
     last_out_movement_id: Optional[int] = None
+    stock_type: Optional[str] = None
     # Pydantic v2
     model_config = {"from_attributes": True}
     # Se estiver em Pydantic v1, use:

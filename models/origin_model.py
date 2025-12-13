@@ -26,6 +26,8 @@ class OrderOrigin(Base):
     # Sistema/forma de envio da OS - Ex.: "SAP", "SALES_FORCE", "GTEC", etc.
     origin_name = Column(String(100), nullable=False, index=True)
 
+    stock_type = Column(String(50), nullable=True)
+
     client = relationship(
         "Client",
         foreign_keys=[client_id],
@@ -33,10 +35,11 @@ class OrderOrigin(Base):
     )
     __table_args__ = (
         UniqueConstraint(
-            "origin_name", "project_name", "client_id",
+            "origin_name", "project_name", "client_id", "stock_type",
             name="uq_origin_business_key"
         ),
-        Index("ix_origin_name_project", "origin_name", "project_name"),
+        Index("ix_origin_name_project", "origin_name",
+              "project_name", "stock_type"),
     )
 
     def __repr__(self) -> str:
