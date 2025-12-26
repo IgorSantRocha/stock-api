@@ -96,6 +96,61 @@ async def create_product(
     return _product
 
 
+@router.post("/list", response_model=List[ProductInDbBase])
+async def create_product(
+        *,
+        db: Session = Depends(deps.get_db_psql),
+        products_in: List[ProductCreate],
+) -> Any:
+    """
+    # Cria um novo produto de acordo com a lista enviada
+
+    ### Para o cliente CIELO, é obrigatório informar as medidas do produto em extra_info.measures. Exemplo:
+
+    ```
+    "extra_info": {
+        "measures": {
+        "width": 22.4,
+        "weight": 0.737,
+        "length": 18.3,
+        "height": 6.7,
+        "quantity": 1,
+        "price": 150.55
+        }
+    }
+    ```
+
+    """
+    _products = []
+    for product_in in products_in:
+        client = await client_crud.get(db=db, id=product_in.client_id)
+        if not client:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Cliente {product_in.client_id} não existe")
+
+        if client.client_code == 'cielo' and not product_in.extra_info.get('measures'):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Para o cliente CIELO, é obrigatório informar as medidas do produto em extra_info.measures")
+
+        # verifica se o produto já existe, se existir, ignora a criação
+        existing_product = await product.get_last_by_filters(
+            db=db,
+            filters={
+                'sku': {'operator': '==', 'value': product_in.sku},
+                'client_id': {'operator': '==', 'value': product_in.client_id}
+            }
+        )
+        if existing_product:
+            logger.info("Produto já existe, ignorando criação...")
+            _products.append(existing_product)
+        else:
+            logger.info("Criando novo product...")
+            _product = await product.create(db=db, obj_in=product_in)
+            _products.append(_product)
+
+    return _products
+
+
 @router.put(path="/{id}", response_model=ProductInDbBase)
 async def put_product(
         *,

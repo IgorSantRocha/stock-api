@@ -37,6 +37,7 @@ class Movement(Base):
     item = relationship("Item",
                         foreign_keys=[item_id],
                         lazy="joined",)
+
     origin = relationship("OrderOrigin", lazy="joined")
 
     from_location = relationship(
