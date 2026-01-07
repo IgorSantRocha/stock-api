@@ -44,7 +44,7 @@ class ItemBase(BaseModel):
 class ItemCreate(BaseModel):
     product_id: Optional[int] = None
     serial: str
-    status: ItemStatus = Field(
+    status: str = Field(
         ...,
         description=f"Status atual do item. Opções: {[e.value for e in ItemStatus]}",
         example=ItemStatus.IN_DEPOT

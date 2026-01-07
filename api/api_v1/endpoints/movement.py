@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from crud.crud_movement import movement
 from crud.crud_origin import origin
-from crud.crud_item import item
+from crud.crud_item import item as item_crud
 from crud.crud_romaneio import romaneio_crud
 
 from schemas.product_schema import ProductCreate, ProductUpdate, ProductInDbBase
@@ -78,16 +78,29 @@ async def create_movement(
 
 > **Nota:** Use sempre `product_id` quando disponível.
 """
+    for item_payload in payload.item and payload.movement_type != 'IN':
+        _item = await item_crud.get_last_by_filters(
+            db=db,
+            filters={
+                'serial': {'operator': '==', 'value': item_payload.serial}
+            })
+        if not _item:
+            raise HTTPException(
+                status_code=400, detail=f"Item com serial {item_payload.serial} não encontrado no sistema. Operação cancelada!")
 
     service = MovementService()
     items = []
     for item in payload.item:
+
         item_volume_number = str(
             item.extra_info.get('volume_number', None))
         item_kit_number = str(item.extra_info.get('kit_number', None))
+        if item_volume_number == 'None' or item_kit_number == 'None':
+            item_volume_number = None if item_volume_number == 'None' else item_volume_number
+            item_kit_number = None if item_kit_number == 'None' else item_kit_number
         if not item_volume_number or not item_kit_number:
-            item_volume_number = payload.volume_number if not item_volume_number else item_volume_number
-            item_kit_number = payload.kit_number if not item_kit_number else item_kit_number
+            item_volume_number = payload.volume_number if not item_volume_number and item_volume_number != 'None' else item_volume_number
+            item_kit_number = payload.kit_number if not item_kit_number and item_kit_number != 'None' else item_kit_number
 
         if not item_volume_number or not item_kit_number:
             raise HTTPException(

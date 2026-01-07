@@ -97,7 +97,7 @@ class MovementService:
         if not _item and payload.movement_type.value not in ['IN', 'COLLECTED']:
             raise HTTPException(
                 status_code=status.HTTP_424_FAILED_DEPENDENCY,
-                detail='Item não encontrado. Para movimentações diferentes de IN, o item deve existir.'
+                detail=f'Item {payload.item.serial} não encontrado. Para movimentações diferentes de IN, o item deve existir.'
             )
         if payload.movement_type.value not in ['IN', 'COLLECTED'] and _item.status != 'IN_DEPOT':
             raise HTTPException(
@@ -119,12 +119,16 @@ class MovementService:
                 )
                 try:
                     result = await request.send_api_request()
-                    payload.item.extra_info['consulta_sincrona'] = 'OK'
                 except Exception as e:
                     result = False
 
-                # Se achar, consulto o produto pelo sku pra ver se tem cadastro, se não tiver, crio
+                if result:
+                    if payload.item.extra_info is None:
+                        payload.item.extra_info = {}
 
+                    payload.item.extra_info['consulta_sincrona'] = result
+
+                # Se achar, consulto o produto pelo sku pra ver se tem cadastro, se não tiver, crio
                 if result:
                     _product = await product.get_last_by_filters(
                         db=db,
@@ -160,10 +164,11 @@ class MovementService:
                     detail=f'Para movimentações {payload.movement_type}, o product_id deve ser informado.')
 
             logger.info("Item não encontrado, criando novo item...")
+            _status = str(self._get_status(payload.movement_type.value))
             item_in = ItemCreate(
                 product_id=payload.item.product_id if payload.item.product_id != 0 else None,
                 serial=payload.item.serial,
-                status=self._get_status(payload.movement_type.value),
+                status=_status,
                 extra_info=payload.item.extra_info,
                 location_id=payload.to_location_id if payload.to_location_id else payload.from_location_id,
             )

@@ -2,7 +2,7 @@ from datetime import datetime
 from io import BytesIO
 from typing import Any, List, Annotated
 import logging
-
+from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 import pandas as pd
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from crud.crud_movement import movement
 from crud.crud_item import item
+from schemas.item_resume_schema import PaStockResumeSchema
 
 from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase
 
@@ -20,11 +21,157 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+@router.get(
+    "/list-byid/{client}/resume",
+    response_model=List[PaStockResumeSchema],
+    summary="Resumo agregado de estoque por PA"
+)
+async def read_items_by_client_resume(
+    client: str,
+    status: str,
+    db: Session = Depends(deps.get_db_psql),
+    stock_type: str | None = None,
+    locations_ids: Annotated[
+        list[int] | None,
+        Query(description="IDs das locations (pode repetir parâmetro)")
+    ] = None,
+) -> Any:
+    """
+Retorna um resumo agregado dos itens de estoque agrupados por:
+
+- PA (location.cod_iata)
+- Tipo de estoque
+- Produto (SKU)
+- ZTIPO (extra_info.consulta_sincrona)
+
+Ideal para dashboards e relatórios.
+"""
+
+    logger.info("Consultando resumo agregado de items por client...")
+
+    # ============================
+    # FILTERS (iguais ao endpoint original)
+    # ============================
+    filters = [
+        {"field": "status", "operator": "=", "value": status},
+        {"field": "product.client.client_code", "operator": "=", "value": client},
+    ]
+
+    if locations_ids:
+        filters.append({
+            "field": "location.id",
+            "operator": "in",
+            "value": locations_ids
+        })
+
+    if stock_type:
+        filters.append({
+            "field": "last_in_movement.origin.stock_type",
+            "operator": "=",
+            "value": stock_type
+        })
+
+    # ============================
+    # 1️ TOTAL POR PA + STOCK TYPE
+    # ============================
+    totais = await item.get_aggregates(
+        db=db,
+        filters=filters,
+        aggregations=[
+            {"op": "count", "field": "id", "alias": "total"}
+        ],
+        group_by=[
+            "location.cod_iata",
+            "last_in_movement.origin.stock_type"
+        ]
+    )
+
+    # ============================
+    # 2️ QTD POR PRODUTO
+    # ============================
+    por_produto = await item.get_aggregates(
+        db=db,
+        filters=filters,
+        aggregations=[
+            {"op": "count", "field": "id", "alias": "qtd"}
+        ],
+        group_by=[
+            "location.cod_iata",
+            "last_in_movement.origin.stock_type",
+            "product.sku"
+        ]
+    )
+
+    # ============================
+    # 3️ QTD POR ZTIPO (JSONB)
+    # ============================
+    por_ztipo = await item.get_aggregates(
+        db=db,
+        filters=filters,
+        aggregations=[
+            {"op": "count", "field": "id", "alias": "qtd"}
+        ],
+        group_by=[
+            "location.cod_iata",
+            "last_in_movement.origin.stock_type",
+            "extra_info.consulta_sincrona.ZTIPO"
+        ]
+    )
+
+    # ============================
+    # 4️ MONTAGEM DO PAYLOAD FINAL
+    # ============================
+    result: dict = defaultdict(dict)
+
+    # ---- totais
+    for row in totais:
+        pa = row["cod_iata"]
+        st = row["stock_type"]
+
+        result[pa][st] = {
+            "type": st,
+            "total": row["total"],
+            "qtd_por_produto": {},
+            "qtd_por_ztipo": {}
+        }
+
+    # ---- produtos
+    for row in por_produto:
+        pa = row["cod_iata"]
+        st = row["stock_type"]
+        sku = row["sku"]
+
+        if pa in result and st in result[pa]:
+            result[pa][st]["qtd_por_produto"][sku] = row["qtd"]
+
+    # ---- ztipo (JSON)
+    for row in por_ztipo:
+        pa = row["cod_iata"]
+        st = row["stock_type"]
+        ztipo = row.get("ZTIPO") or "N/A"
+
+        if pa in result and st in result[pa]:
+            result[pa][st]["qtd_por_ztipo"][ztipo] = row["qtd"]
+
+    # ============================
+    # 5️ FORMATA SAÍDA FINAL
+    # ============================
+    response = []
+    for pa, stocks in result.items():
+        response.append({
+            "pa": pa,
+            "stock_types": list(stocks.values())
+        })
+
+    return response
+
+
 @router.get("/list-byid/{client}", response_model=List[ItemInDbListBase])
 async def read_items_by_client(
         client: str,
         status: str,
         db: Session = Depends(deps.get_db_psql),
+        stock_type: str = None,
         offset: int = 0,
         limit: int = 100,
         locations_ids: Annotated[
@@ -58,7 +205,12 @@ async def read_items_by_client(
             "operator": "in",
             "value": locations_ids  # já vem como lista[int]
         })
-
+    if stock_type:
+        filters.append({
+            "field": "last_in_movement.origin.stock_type",
+            "operator": "=",
+            "value": stock_type
+        })
     itens = await item.get_multi_filters(
         db=db,
         filters=filters,
@@ -84,6 +236,7 @@ async def export_items_by_client(
         client: str,
         status: str,
         db: Session = Depends(deps.get_db_psql),
+        stock_type: str = None,
         offset: int = 0,
         limit: int = 100,
         locations_ids: Annotated[
@@ -117,7 +270,12 @@ async def export_items_by_client(
             "operator": "in",
             "value": locations_ids  # já vem como lista[int]
         })
-
+    if stock_type:
+        filters.append({
+            "field": "last_in_movement.origin.stock_type",
+            "operator": "=",
+            "value": stock_type
+        })
     result = await item.get_multi_filters(
         db=db,
         filters=filters,
