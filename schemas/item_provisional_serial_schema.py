@@ -29,7 +29,9 @@ class ProvisionalSerialCreate(ProvisionalSerialBase):
 
 
 class ProvisionalSerialUpdate(BaseModel):
-
+    item_id: Optional[int] = Field(
+        None, description="ID do item relacionado"
+    )
     model_config = ConfigDict(extra="forbid")
 
 

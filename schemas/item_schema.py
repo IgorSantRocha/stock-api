@@ -2,7 +2,7 @@ import datetime
 import enum
 from typing import Optional, Any
 from zoneinfo import ZoneInfo
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 
 class ItemStatus(enum.Enum):

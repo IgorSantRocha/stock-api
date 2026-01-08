@@ -10,12 +10,15 @@ from crud.crud_movement import movement
 from crud.crud_item import item
 from crud.crud_romaneio import romaneio_crud
 from crud.crud_romaneio_item import romaneio_crud_item
+from crud.crud_item_provisional_serial import item_provisional_serial_crud
+from crud.crud_origin import origin as crud_origin
 
 from schemas.product_schema import ProductCreate, ProductUpdate, ProductInDbBase
 from schemas.item_schema import ItemCreate, ItemProductUpdate, ItemStatus, ItemUpdate, ItemInDbBase
 from schemas.movement_schema import MovementCreate, MovementPayload, MovementInDbBase, MovementType
 from schemas.romaneio_schema import RomaneioUpdate
-
+from schemas.item_provisional_serial_schema import ProvisionalSerialCreate, ProvisionalSerialUpdate, ProvisionalSerialInDbBase
+from schemas.origin_schema import OrderOriginBase
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +80,22 @@ class MovementService:
 
         return _romaneio
 
+    async def create_provisional_serial(self, db: Session, payload: MovementPayload) -> ProvisionalSerialInDbBase:
+        """
+        Cria uma Serial provisória para o item.
+        """
+        logger.info("Criando Serial provisória...")
+        # Cria o Serial provisório
+        provisional_serial_in = ProvisionalSerialCreate(
+            old_serial_number=payload.item.serial,
+            created_by=payload.created_by,
+            reason='Serial não encontrado na Consulta Sincrona.'
+        )
+        _provisional_serial = await item_provisional_serial_crud.create(db=db, obj_in=provisional_serial_in)
+        logger.info(
+            f"Serial provisória criada com ID: {_provisional_serial.id}")
+        return _provisional_serial
+
     async def create_movement(self, db: Session, payload: MovementPayload) -> ItemInDbBase:
         """
         0. Se o product_id do item estiver como zero e o cliente for Cielo. Tento localizar o produto, se não conseguir, retorno um erro.
@@ -106,7 +125,7 @@ class MovementService:
             )
 
         if not _item:
-            if payload.client_name == 'cielo':
+            if payload.client_name == 'cielo' and not payload.item.serial.startswith('ILG'):
                 # Vou tentar localizar o serial na consulta síncrona da Cielo e pegar as informações do produto
                 request_data = {"SERGE": payload.item.serial}
 
@@ -121,6 +140,16 @@ class MovementService:
                     result = await request.send_api_request()
                 except Exception as e:
                     result = False
+                    # cria serial provisório e estoura erro adicionando no detail um dicioário com o erro e o serial provisório
+                    logger.error(f"Erro na consulta síncrona: {e}")
+                    _provisional_serial = await self.create_provisional_serial(db=db, payload=payload)
+                    raise HTTPException(
+                        status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                        detail={
+                            "error": f"Erro na consulta síncrona: {e}",
+                            "provisional_serial": _provisional_serial.new_serial_number
+                        }
+                    )
 
                 if result:
                     if payload.item.extra_info is None:
@@ -175,6 +204,33 @@ class MovementService:
 
             _item = await item.create(db=db, obj_in=item_in)
             logger.info(f"Item criado com ID: {_item.id}")
+            # verifico se o item criado era um serial provisório, se sim. Atualizo na tabela de controle com o item_id
+            if payload.item.serial.startswith('ILG'):
+                _provisional_serial = await item_provisional_serial_crud.get_last_by_filters(
+                    db=db,
+                    filters={
+                        'new_serial_number': {'operator': '==', 'value': payload.item.serial}
+                    })
+                if _provisional_serial:
+                    provisional_serial_update = ProvisionalSerialUpdate(
+                        item_id=_item.id
+                    )
+                    _provisional_serial = await item_provisional_serial_crud.update(
+                        db=db,
+                        db_obj=_provisional_serial,
+                        obj_in=provisional_serial_update
+                    )
+                old_order_origin = await crud_origin.get(db=db, id=payload.order_origin_id)
+                new_order_origin_id = await crud_origin.get_last_by_filters(
+                    db=db,
+                    filters={
+                        'origin_name': {'operator': '==', 'value': old_order_origin.origin_name},
+                        'project_name': {'operator': '==', 'value': old_order_origin.project_name},
+                        'client_id': {'operator': '==', 'value': old_order_origin.client_id},
+                        'stock_type': {'operator': '==', 'value': 'Aguardando Reversa (Seriais Provisórios)'},
+                    }
+                )
+                payload.order_origin_id = new_order_origin_id.id
 
         logger.info("Criando novo movement...")
         movement_in = MovementCreate(
