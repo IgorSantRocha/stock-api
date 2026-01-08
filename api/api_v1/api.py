@@ -1,6 +1,13 @@
 from fastapi import APIRouter
 
-from api.api_v1.endpoints import origin, product, movement, item, romaneio, client
+from api.api_v1.endpoints import (
+    origin,
+    product,
+    movement,
+    item,
+    romaneio,
+    client,
+    item_provisional_serial)
 
 api_router = APIRouter()
 
@@ -21,3 +28,6 @@ api_router.include_router(
 
 api_router.include_router(
     romaneio.router, prefix="/v1/romaneios", tags=["Romaneios V1"])
+
+api_router.include_router(
+    item_provisional_serial.router, prefix="/v1/item/provisional", tags=["Seriais Provisórios V1"])

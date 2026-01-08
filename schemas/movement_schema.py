@@ -158,14 +158,14 @@ class MovementInDbBase(MovementBase):
         example="2025-08-30T10:15:00"
     )
 
-    # @field_serializer("created_at",  when_used="always")
-    # def serialize_dt(self, dt: datetime.datetime | None):
-    #     if dt is None:
-    #         return None
-    #     if dt.tzinfo is None:
-    #         # se vier naive, assume que está em UTC
-    #         dt = dt.replace(tzinfo=datetime.timezone.utc)
-    #     return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
+    @field_serializer("created_at",  when_used="always")
+    def serialize_dt(self, dt: datetime.datetime | None):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            # se vier naive, assume que está em UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
 
 
 class Movement(MovementInDbBase):

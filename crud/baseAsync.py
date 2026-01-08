@@ -10,6 +10,9 @@ from sqlalchemy import func, select,  cast
 from sqlalchemy.types import Numeric
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.exc import IntegrityError
+from asyncpg.exceptions import UniqueViolationError
+
 
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -19,6 +22,31 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         self.model = model
+
+    async def _commit_with_retry(
+        self,
+        db: AsyncSession,
+        *,
+        max_retries: int = 3
+    ):
+        """
+        Faz commit com retry automático em caso de violação de UNIQUE.
+        """
+        for attempt in range(1, max_retries + 1):
+            try:
+                await db.commit()
+                return
+            except IntegrityError as e:
+                await db.rollback()
+
+                # PostgreSQL UNIQUE violation
+                if isinstance(e.orig, UniqueViolationError):
+                    if attempt == max_retries:
+                        raise
+                    continue
+
+                # Qualquer outro erro não deve ser engolido
+                raise
 
     # ----------------------
     # Helpers para relações
@@ -423,14 +451,22 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         obj_data = obj_in.model_dump()
         db_obj = self.model(**obj_data)  # type: ignore
         db.add(db_obj)
-        await db.commit()
+        await self._commit_with_retry(db)
         await db.refresh(db_obj)
         return db_obj
 
-    async def create_multi(self, db: AsyncSession, *, obj_in: List[CreateSchemaType]) -> Dict[str, str]:
+    async def create_multi(
+        self,
+        db: AsyncSession,
+        *,
+        obj_in: List[CreateSchemaType],
+        max_retries: int = 3
+    ) -> Dict[str, str]:
         db_objs = [self.model(**jsonable_encoder(obj)) for obj in obj_in]
         db.add_all(db_objs)
-        await db.commit
+
+        await self._commit_with_retry(db, max_retries=max_retries)
+
         return {"msg": "Objetos criados com sucesso"}
 
     async def update(

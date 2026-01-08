@@ -1,7 +1,8 @@
 import datetime
 import enum
 from typing import Optional, Any
-from pydantic import BaseModel, Field
+from zoneinfo import ZoneInfo
+from pydantic import BaseModel, Field, field_serializer
 
 
 class ItemStatus(enum.Enum):
@@ -95,6 +96,15 @@ class ItemInDbListBase(BaseModel):
     last_movement_in_date: Optional[datetime.datetime] = None
     stock_type: Optional[str] = None
     extra_info: Optional[dict[str, Any]] = None
+
+    @field_serializer("last_movement_in_date",  when_used="always")
+    def serialize_dt(self, dt: datetime.datetime | None):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            # se vier naive, assume que está em UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
 
 
 class ItemPedidoInDbBase(ItemBase):

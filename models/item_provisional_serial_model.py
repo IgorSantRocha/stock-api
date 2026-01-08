@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 from db.base_class import Base
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
+from datetime import datetime
 
 
 class ProvisionalSerialItem(Base):
@@ -33,16 +34,27 @@ class ProvisionalSerialItem(Base):
 
 @event.listens_for(ProvisionalSerialItem, "before_insert")
 def generate_romaneio_number(mapper, connection, target):
+    # Conta quantos registros já existem HOJE
     result = connection.execute(
         text(
-            f"SELECT COALESCE(MAX(id), 0) + 1 FROM {ProvisionalSerialItem.__tablename__}")
+            f"""
+            SELECT COUNT(*) 
+            FROM {ProvisionalSerialItem.__tablename__}
+            WHERE created_at::date = CURRENT_DATE
+            """
+        )
     )
-    next_id = result.scalar()
 
-    # monta o ano com 2 dígitos
-    year = str(func.now().year)[-2:]
-    month = str(func.now().month).zfill(2)
-    day = str(func.now().day).zfill(2)
+    daily_count = result.scalar() or 0
+    next_sequence = daily_count + 1
 
-    # padrão esperado para new_serial_number: ILG-010126-9926"
-    target.new_serial_number = f"ILG-{day}{month}{year}-{str(next_id).zfill(4)}"
+    # Data atual
+    now = datetime.now()
+    year = str(now.year)[-2:]
+    month = str(now.month).zfill(2)
+    day = str(now.day).zfill(2)
+
+    # ILG-DDMMYY-0001
+    target.new_serial_number = (
+        f"ILG-{day}{month}{year}-{str(next_sequence).zfill(4)}"
+    )
