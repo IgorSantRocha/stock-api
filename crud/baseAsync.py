@@ -225,7 +225,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 group_columns.append(gb_attr)
                 select_columns.append(gb_attr.label(label))
 
-
             stmt = stmt.group_by(*group_columns)
 
         stmt = stmt.with_only_columns(*select_columns)

@@ -26,7 +26,3 @@ class Product(Base):
         foreign_keys=[client_id],
         lazy="joined",
     )
-
-    # @hybrid_property
-    # def client_name(self):
-    #     return self.client.client_code if self.client else None

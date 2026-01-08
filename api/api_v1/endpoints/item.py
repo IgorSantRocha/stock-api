@@ -83,6 +83,7 @@ Ideal para dashboards e relatórios.
         group_by=[
             "location.cod_iata",
             "last_in_movement.origin.stock_type"
+
         ]
     )
 
@@ -98,7 +99,8 @@ Ideal para dashboards e relatórios.
         group_by=[
             "location.cod_iata",
             "last_in_movement.origin.stock_type",
-            "product.sku"
+            "product.sku",
+            "product.description"
         ]
     )
 
@@ -114,7 +116,8 @@ Ideal para dashboards e relatórios.
         group_by=[
             "location.cod_iata",
             "last_in_movement.origin.stock_type",
-            "extra_info.consulta_sincrona.ZTIPO"
+            "extra_info.consulta_sincrona.ZTIPO",
+            "product.description"
         ]
     )
 
@@ -140,18 +143,22 @@ Ideal para dashboards e relatórios.
         pa = row["cod_iata"]
         st = row["stock_type"]
         sku = row["sku"]
+        description = row["description"]
+        txt = f"{sku} - {description}"
 
         if pa in result and st in result[pa]:
-            result[pa][st]["qtd_por_produto"][sku] = row["qtd"]
+            result[pa][st]["qtd_por_produto"][txt] = row["qtd"]
 
     # ---- ztipo (JSON)
     for row in por_ztipo:
         pa = row["cod_iata"]
         st = row["stock_type"]
         ztipo = row.get("ZTIPO") or "N/A"
+        description = row["description"]
+        txt = f"{ztipo} - {description}"
 
         if pa in result and st in result[pa]:
-            result[pa][st]["qtd_por_ztipo"][ztipo] = row["qtd"]
+            result[pa][st]["qtd_por_ztipo"][txt] = row["qtd"]
 
     # ============================
     # 5️ FORMATA SAÍDA FINAL

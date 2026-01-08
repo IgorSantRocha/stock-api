@@ -6,3 +6,4 @@ from .origin_model import OrderOrigin
 from .romaneio_model import Romaneio
 from .romaneio_item_model import RomaneioItem
 from .client_model import Client
+from .item_provisional_serial_model import ProvisionalSerialItem

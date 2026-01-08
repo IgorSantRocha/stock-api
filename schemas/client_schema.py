@@ -1,11 +1,13 @@
 import datetime
 from typing import Optional, Dict, Any
 from zoneinfo import ZoneInfo
-from pydantic import BaseModel, field_serializer
-
+from pydantic import field_serializer
+from schemas.base import BaseSchema
 
 # Base: campos que podem ser reaproveitados
-class ClientBaseSC(BaseModel):
+
+
+class ClientBaseSC(BaseSchema):
     client_code: str
     client_name: Optional[str] = None
     created_by: Optional[str] = None
@@ -18,7 +20,7 @@ class ClientCreateSC(ClientBaseSC):
 
 
 # Schema para update (todos opcionais)
-class ClientUpdateSC(BaseModel):
+class ClientUpdateSC(BaseSchema):
     client_code: Optional[str] = None
     client_name: Optional[str] = None
     created_by: Optional[str] = None
