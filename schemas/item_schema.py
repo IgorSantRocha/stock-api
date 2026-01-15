@@ -82,7 +82,6 @@ class ItemInDbBase(ItemBase):
 
 
 class ItemInDbListBase(BaseModel):
-    id: int
     serial: str
     status: ItemStatus = Field(
         ...,
@@ -96,6 +95,45 @@ class ItemInDbListBase(BaseModel):
     last_movement_in_date: Optional[datetime.datetime] = None
     stock_type: Optional[str] = None
     extra_info: Optional[dict[str, Any]] = None
+    id: int
+
+    @field_serializer("last_movement_in_date",  when_used="always")
+    def serialize_dt(self, dt: datetime.datetime | None):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            # se vier naive, assume que está em UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
+
+
+class ItemInDbListBaseCielo(BaseModel):
+    serial: str
+    status: ItemStatus = Field(
+        ...,
+        description=f"Status atual do item. Opções: {[e.value for e in ItemStatus]}",
+        example=ItemStatus.IN_DEPOT
+    )
+    location_name: str
+    location_deps: Optional[str] = None
+    product_sku: str
+    product_description: str
+    produtct_category: str
+    last_movement_in_date: Optional[datetime.datetime] = None
+    stock_type: Optional[str] = None
+    extra_consulta_sincrona_matnr: Optional[str] = None
+    extra_consulta_sincrona_sernr: Optional[str] = None
+    extra_consulta_sincrona_ztipo: Optional[str] = None
+    # extra_consulta_sincrona_lager: Optional[str] = None
+    # extra_consulta_sincrona_lgort: Optional[str] = None
+    extra_consulta_sincrona_equnr: Optional[str] = None
+    # extra_consulta_sincrona_sttxt: Optional[str] = None
+    # extra_consulta_sincrona_sttxu: Optional[str] = None
+    # extra_consulta_sincrona_zsta_eq: Optional[str] = None
+    extra_consulta_sincrona_zver_ap: Optional[str] = None
+
+    extra_info: Optional[dict[str, Any]] = None
+    id: int
 
     @field_serializer("last_movement_in_date",  when_used="always")
     def serialize_dt(self, dt: datetime.datetime | None):

@@ -78,15 +78,16 @@ async def create_movement(
 
 > **Nota:** Use sempre `product_id` quando disponível.
 """
-    for item_payload in payload.item and payload.movement_type != 'IN':
-        _item = await item_crud.get_last_by_filters(
-            db=db,
-            filters={
-                'serial': {'operator': '==', 'value': item_payload.serial}
-            })
-        if not _item:
-            raise HTTPException(
-                status_code=400, detail=f"Item com serial {item_payload.serial} não encontrado no sistema. Operação cancelada!")
+    if payload.movement_type != 'IN':
+        for item_payload in payload.item:
+            _item = await item_crud.get_last_by_filters(
+                db=db,
+                filters={
+                    'serial': {'operator': '==', 'value': item_payload.serial}
+                })
+            if not _item:
+                raise HTTPException(
+                    status_code=400, detail=f"Item com serial {item_payload.serial} não encontrado no sistema. Operação cancelada!")
 
     service = MovementService()
     items = []

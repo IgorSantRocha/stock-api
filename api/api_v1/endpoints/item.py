@@ -7,12 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 import pandas as pd
 from sqlalchemy.orm import Session
-
+from utils import flatten_dict
 from crud.crud_movement import movement
 from crud.crud_item import item
 from schemas.item_resume_schema import PaStockResumeSchema
 
-from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase
+from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase, ItemInDbListBaseCielo
 
 
 from api import deps
@@ -238,7 +238,7 @@ async def read_items_by_client(
     return itens
 
 
-@router.get("/list-byid/export/{client}/", response_model=List[ItemInDbListBase])
+@router.get("/list-byid/export/{client}/", response_model=Any)
 async def export_items_by_client(
         client: str,
         status: str,
@@ -295,6 +295,7 @@ async def export_items_by_client(
     from_locations_str = ''
     for _item in result:
         _item.location_name = f'PA_{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
+        _item.location_deps = _item.location.deposito if _item.location.deposito else None
         _item.product_sku = _item.product.sku
         _item.product_description = _item.product.description
         _item.produtct_category = _item.product.category
@@ -305,13 +306,29 @@ async def export_items_by_client(
         else:
             from_locations_str = f'_from_{_item.location_name}'
 
+        # itero todos os objetos dentro de item.extra_info e crio eles e seus valores como colunas
+        extra_info = _item.extra_info or {}
+
+        if isinstance(extra_info, dict) and extra_info:
+            flat_extra = flatten_dict(extra_info)
+
+            for key, value in flat_extra.items():
+                # normaliza o nome da "coluna"
+                attr_name = f"extra_{key}".lower()
+
+                # seta dinamicamente no item
+                setattr(_item, attr_name, value)
+
     # === Converter para DataFrame ===
     data = [r.__dict__ for r in result]
     for d in data:
         d.pop('_sa_instance_state', None)
 
     df = pd.DataFrame(data)
-    ordered_columns = list(ItemInDbListBase.__fields__.keys())
+    if client == 'cielo':
+        ordered_columns = list(ItemInDbListBaseCielo.__fields__.keys())
+    else:
+        ordered_columns = list(ItemInDbListBase.__fields__.keys())
     df = df.reindex(columns=ordered_columns)
 
     for col in df.select_dtypes(include=["datetimetz"]).columns:
@@ -321,22 +338,6 @@ async def export_items_by_client(
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="IN_DEPOT_ITEMS")
-        # ws = writer.sheets["Pedidos"]
-
-    #     # Encontrar índice da coluna 'ultima_tracking'
-    #     col_index = None
-    #     for idx, col_name in enumerate(df.columns, 1):
-    #         if col_name == "ultima_tracking":
-    #             col_index = idx
-    #             break
-
-    # # Aplicar cor vermelha escura nas células com "TROCA DE CUSTODIA PENDENTE"
-    # if col_index:
-    #     # começa na linha 2 (depois do cabeçalho)
-    #     for row_idx, value in enumerate(df["ultima_tracking"], start=2):
-    #         if value == "TROCA DE CUSTODIA PENDENTE":
-    #             ws.cell(row=row_idx, column=col_index).font = Font(
-    #                 color="8B0000", bold=True)
 
     output.seek(0)
 

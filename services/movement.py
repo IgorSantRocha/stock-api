@@ -140,16 +140,21 @@ class MovementService:
                     result = await request.send_api_request()
                 except Exception as e:
                     result = False
-                    # cria serial provisório e estoura erro adicionando no detail um dicioário com o erro e o serial provisório
-                    logger.error(f"Erro na consulta síncrona: {e}")
-                    _provisional_serial = await self.create_provisional_serial(db=db, payload=payload)
-                    raise HTTPException(
-                        status_code=status.HTTP_424_FAILED_DEPENDENCY,
-                        detail={
-                            "error": f"Erro na consulta síncrona: {e}",
-                            "provisional_serial": _provisional_serial.new_serial_number
-                        }
+                    product_item = await product.get(
+                        db=db,
+                        id=payload.item.product_id
                     )
+                    if product_item.category != 'CHIP':
+                        # cria serial provisório e estoura erro adicionando no detail um dicioário com o erro e o serial provisório
+                        logger.error(f"Erro na consulta síncrona: {e}")
+                        _provisional_serial = await self.create_provisional_serial(db=db, payload=payload)
+                        raise HTTPException(
+                            status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                            detail={
+                                "error": f"Erro na consulta síncrona: {e}",
+                                "provisional_serial": _provisional_serial.new_serial_number
+                            }
+                        )
 
                 if result:
                     if payload.item.extra_info is None:
