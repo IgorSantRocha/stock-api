@@ -9,7 +9,7 @@ from crud.crud_romaneio_item import romaneio_crud_item as romaneio_item
 from crud.crud_romaneio import romaneio_crud as romaneio
 from crud.crud_item import item as item_crud
 from crud.crud_client import client_crud
-from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse
+from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse, RomaneioItemUpdateKit
 from schemas.romaneio_schema import RomaneioCreateV2, RomaneioUpdate, RomaneioInDbBase, RomaneioCreate
 
 from services.romaneio import RomaneioItemService
@@ -37,7 +37,7 @@ async def read_romaneios(
     if location_id == 0:
         _romaneios = await romaneio.get_multi(db=db, skip=skip, limit=limit)
     else:
-        _romaneios = await romaneio.get_multi_filter(db=db, filterby='location_id', filter=location_id, skip=skip, limit=limit)
+        _romaneios = await romaneio.get_multi_filter(db=db, filterby='location_id', filter=location_id)
 
     return _romaneios
 
@@ -81,6 +81,7 @@ async def read_romaneio(
     service = RomaneioItemService()
 
     existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in, location_id=location_id, show_products=True)
+
     return existing_romaneio
 
 
@@ -109,6 +110,7 @@ async def insert_items_romaneio(
     service = RomaneioItemService()
 
     romaneio_list = await service.insere_novo_item(db=db, romaneio_in=romaneio_in, item=item)
+
     return romaneio_list
 
 
@@ -202,5 +204,22 @@ async def delete_item_rom(
     if not existing_romaneio:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="romaneio not found")
+
+    # Refatoro o kit_number de acordo com a lista de kits
+    for volumn in existing_romaneio.volums:
+        for j, kit in enumerate(volumn.kits, 1):
+            if kit.kit_number != str(j):
+                kit.kit_number = str(j)
+                item_obj = await romaneio_item.get_first_by_filter(
+                    db=db,
+                    filterby="id",
+                    filter=kit.id)
+
+                await romaneio_item.update(
+                    db=db,
+                    db_obj=item_obj,
+                    obj_in=RomaneioItemUpdateKit(
+                        kit_number=kit.kit_number)
+                )
 
     return existing_romaneio

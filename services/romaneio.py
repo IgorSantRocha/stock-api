@@ -39,6 +39,7 @@ class RomaneioItemService:
                 order_number=item.order_number,
                 created_by=item.created_by,
                 created_at=item.created_at,
+                id=item.id,
                 product_data=_product
             )
             volumes_dict[vol_num][kit_num].append(item_volume)
@@ -144,11 +145,22 @@ class RomaneioItemService:
             )
 
         if not existing_romaneio_item:
+            filters = [
+                {"field": "romaneio_id", "operator": "=",
+                    "value": existing_romaneio.id},
+                {"field": "volume_number", "operator": "=",
+                    "value": item.volume_number}
+            ]
+            _itens_volume = await romaneio_item.get_multi_filters(
+                db=db,
+                filters=filters)
+
+            new_kit_number = len(_itens_volume)+1
             obj_romaneio_item = RomaneioItemCreate(
                 romaneio_id=existing_romaneio.id,
                 item_id=last_movement.item_id,
                 created_by=item.create_by,
-                kit_number=item.kit_number,
+                kit_number=str(new_kit_number),
                 volume_number=item.volume_number,
                 order_number=last_movement.order_number
             )

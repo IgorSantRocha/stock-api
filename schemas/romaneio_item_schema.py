@@ -6,6 +6,7 @@ from schemas.product_schema import ProductInDbBase
 
 
 class RomaneioItemKit(BaseModel):
+    id: int
     kit_number: str
     serial: str
     order_number: str
@@ -54,6 +55,9 @@ class RomaneioItemBase(BaseModel):
 
 class RomaneioItemCreate(RomaneioItemBase):
     order_number: str
+
+class RomaneioItemUpdateKit(BaseModel):
+    kit_number: Optional[str] = None
 
 
 class RomaneioItemUpdate(BaseModel):
