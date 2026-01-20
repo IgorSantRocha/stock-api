@@ -1,16 +1,17 @@
 from datetime import datetime
 from io import BytesIO
-from typing import Any, List, Annotated
+from typing import Any, List, Annotated, Literal
 import logging
 from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+import fastapi
 from fastapi.responses import StreamingResponse
 import pandas as pd
 from sqlalchemy.orm import Session
 from utils import flatten_dict
 from crud.crud_movement import movement
 from crud.crud_item import item
-from schemas.item_resume_schema import PaStockResumeSchema
+from schemas.item_resume_schema import PaStockResumeSchema, ResumeExportSchema
 
 from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase, ItemInDbListBaseCielo
 
@@ -82,6 +83,7 @@ Ideal para dashboards e relatórios.
         ],
         group_by=[
             "location.cod_iata",
+            "location.nome",
             "last_in_movement.origin.stock_type"
 
         ]
@@ -98,6 +100,7 @@ Ideal para dashboards e relatórios.
         ],
         group_by=[
             "location.cod_iata",
+            "location.nome",
             "last_in_movement.origin.stock_type",
             "product.sku",
             "product.description"
@@ -115,6 +118,7 @@ Ideal para dashboards e relatórios.
         ],
         group_by=[
             "location.cod_iata",
+            "location.nome",
             "last_in_movement.origin.stock_type",
             "extra_info.consulta_sincrona.ZTIPO",
             "product.description"
@@ -128,7 +132,8 @@ Ideal para dashboards e relatórios.
 
     # ---- totais
     for row in totais:
-        pa = row["cod_iata"]
+        nome_pa = F'{row.get("nome") or "N/A"} ({row["cod_iata"] or "N/A"})'
+        pa = nome_pa
         st = row["stock_type"]
 
         result[pa][st] = {
@@ -140,7 +145,8 @@ Ideal para dashboards e relatórios.
 
     # ---- produtos
     for row in por_produto:
-        pa = row["cod_iata"]
+        nome_pa = F'{row.get("nome") or "N/A"} ({row["cod_iata"] or "N/A"})'
+        pa = nome_pa
         st = row["stock_type"]
         sku = row["sku"]
         description = row["description"]
@@ -151,7 +157,8 @@ Ideal para dashboards e relatórios.
 
     # ---- ztipo (JSON)
     for row in por_ztipo:
-        pa = row["cod_iata"]
+        nome_pa = F'{row.get("nome") or "N/A"} ({row["cod_iata"] or "N/A"})'
+        pa = nome_pa
         st = row["stock_type"]
         ztipo = row.get("ZTIPO") or "N/A"
         description = row["description"]
@@ -171,6 +178,166 @@ Ideal para dashboards e relatórios.
         })
 
     return response
+
+
+@router.get(
+    "/list-byid/{client}/resume/export",
+    response_model=Any,
+    summary="Resumo agregado de estoque por PA"
+)
+async def read_items_by_client_resume(
+    client: str,
+    status: str,
+    agregate_by: Literal['product', 'ztipo'] = 'product',
+    db: Session = Depends(deps.get_db_psql),
+    stock_type: str | None = None,
+    locations_ids: Annotated[
+        list[int] | None,
+        Query(description="IDs das locations (pode repetir parâmetro)")
+    ] = None,
+) -> Any:
+    """
+Retorna um resumo agregado dos itens de estoque agrupados por:
+
+- PA (location.cod_iata)
+- Tipo de estoque
+- Produto (SKU)
+- ZTIPO (extra_info.consulta_sincrona)
+
+Ideal para dashboards e relatórios.
+"""
+
+    if agregate_by == 'ztipo' and client != 'cielo':
+        raise HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail="A agregação por ZTIPO está disponível apenas para o cliente CIELO.",
+        )
+
+    arq_name = f'{client}_{status}_itens_by_{agregate_by}'
+    logger.info("Consultando resumo agregado de items por client...")
+
+    # ============================
+    # FILTERS (iguais ao endpoint original)
+    # ============================
+    filters = [
+        {"field": "status", "operator": "=", "value": status},
+        {"field": "product.client.client_code", "operator": "=", "value": client},
+    ]
+
+    if locations_ids:
+        filters.append({
+            "field": "location.id",
+            "operator": "in",
+            "value": locations_ids
+        })
+        arq_name += f'_locations_{"_".join(map(str, locations_ids))}'
+
+    if stock_type:
+        filters.append({
+            "field": "last_in_movement.origin.stock_type",
+            "operator": "=",
+            "value": stock_type
+        })
+        arq_name += f'_stocktype_{stock_type}'
+
+    # ============================
+    # 21 QTD POR PRODUTO
+    # ============================
+    por_produto = None
+    if agregate_by == 'product':
+        por_produto = await item.get_aggregates(
+            db=db,
+            filters=filters,
+            aggregations=[
+                {"op": "count", "field": "id", "alias": "qtd"}
+            ],
+            group_by=[
+                "location.cod_iata",
+                "location.nome",
+                "last_in_movement.origin.stock_type",
+                "product.sku",
+                "product.description"
+            ]
+        )
+
+    # ============================
+    # 2 QTD POR ZTIPO (JSONB)
+    # ============================
+    por_ztipo = None
+    if agregate_by == 'ztipo':
+        por_ztipo = await item.get_aggregates(
+            db=db,
+            filters=filters,
+            aggregations=[
+                {"op": "count", "field": "id", "alias": "qtd"}
+            ],
+            group_by=[
+                "location.cod_iata",
+                "location.nome",
+                "last_in_movement.origin.stock_type",
+                "extra_info.consulta_sincrona.ZTIPO",
+                "product.description"
+            ]
+        )
+
+    # ============================
+    # 3 MONTAGEM DO PAYLOAD FINAL
+    # ============================
+    response: list[ResumeExportSchema] = []
+
+    if agregate_by == "product":
+        for row in por_produto:
+            nome_pa = F'{row.get("nome") or "N/A"} ({row["cod_iata"] or "N/A"})'
+            response.append(
+                ResumeExportSchema(
+                    pa=nome_pa,
+                    stock_type=row["stock_type"],
+                    product=f'{row["sku"]} - {row["description"]}',
+                    qtd=row["qtd"]
+                )
+            )
+
+    elif agregate_by == "ztipo":
+        for row in por_ztipo:
+            nome_pa = F'{row.get("nome") or "N/A"} ({row["cod_iata"] or "N/A"})'
+            ztipo = row.get("ZTIPO") or "N/A"
+            response.append(
+                ResumeExportSchema(
+                    pa=nome_pa,
+                    stock_type=row["stock_type"],
+                    product=f'{ztipo} - {row["description"]}',
+                    qtd=row["qtd"]
+                )
+            )
+
+    # === Converter para DataFrame ===
+    data = [r.__dict__ for r in response]
+    for d in data:
+        d.pop('_sa_instance_state', None)
+
+    df = pd.DataFrame(data)
+    ordered_columns = list(ResumeExportSchema.__fields__.keys())
+
+    df = df.reindex(columns=ordered_columns)
+
+    for col in df.select_dtypes(include=["datetimetz"]).columns:
+        df[col] = df[col].dt.tz_localize(None)
+
+    # === Gerar Excel com formatação ===
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="IN_DEPOT_ITEMS")
+
+    output.seek(0)
+
+    now = datetime.now()
+    filename = f"stock{arq_name}_{now.strftime('%d%m%y_%H%M')}.xlsx"
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 @router.get("/list-byid/{client}", response_model=List[ItemInDbListBase])
@@ -228,7 +395,7 @@ async def read_items_by_client(
         limit=limit,
     )
     for _item in itens:
-        _item.location_name = f'PA_{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
+        _item.location_name = F'{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
         _item.product_sku = _item.product.sku
         _item.product_description = _item.product.description
         _item.produtct_category = _item.product.category
@@ -294,7 +461,7 @@ async def export_items_by_client(
     )
     from_locations_str = ''
     for _item in result:
-        _item.location_name = f'PA_{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
+        _item.location_name = F'{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
         _item.location_deps = _item.location.deposito if _item.location.deposito else None
         _item.product_sku = _item.product.sku
         _item.product_description = _item.product.description
@@ -412,7 +579,7 @@ async def read_item(
             detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
         )
 
-    _item.location_name = f'PA_{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
+    _item.location_name = F'{_item.location.cod_iata}-{_item.location.nome}' if _item.location.cod_iata else _item.location.nome
     _item.product_sku = _item.product.sku
     _item.product_description = _item.product.description
     _item.produtct_category = _item.product.category

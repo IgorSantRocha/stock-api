@@ -30,3 +30,10 @@ class PaStockResumeSchema(BaseModel):
         ...,
         description="Lista de tipos de estoque com seus respectivos totais"
     )
+
+
+class ResumeExportSchema(BaseModel):
+    pa: str
+    stock_type: str
+    product: str
+    qtd: int
