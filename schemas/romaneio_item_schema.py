@@ -33,6 +33,11 @@ class RomaneioItemResponse(BaseModel):
     romaneio: str
     status: str
     location_id: int
+    location: Optional[str] = None
+    origin_id: Optional[int] = None
+    origin: Optional[str] = None
+    destination_id: Optional[int] = None
+    destination: Optional[str] = None
     volums: List[RomaneioItemVolum]
 
 
@@ -55,6 +60,7 @@ class RomaneioItemBase(BaseModel):
 
 class RomaneioItemCreate(RomaneioItemBase):
     order_number: str
+
 
 class RomaneioItemUpdateKit(BaseModel):
     kit_number: Optional[str] = None

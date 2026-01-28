@@ -7,7 +7,8 @@ from api.api_v1.endpoints import (
     item,
     romaneio,
     client,
-    item_provisional_serial)
+    item_provisional_serial,
+    romaneio_v2)
 
 api_router = APIRouter()
 
@@ -26,6 +27,9 @@ api_router.include_router(
 api_router.include_router(
     item.router, prefix="/v1/items", tags=["Itens V1"])
 
+
+api_router.include_router(
+    romaneio_v2.router, prefix="/v2/romaneios", tags=["Romaneios V2"])
 api_router.include_router(
     romaneio.router, prefix="/v1/romaneios", tags=["Romaneios V1"])
 

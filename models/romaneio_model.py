@@ -16,6 +16,10 @@ class Romaneio(Base):
 
     location_id = Column(Integer, ForeignKey(
         "logistica_groupaditionalinformation.id"))
+    origin_id = Column(Integer, ForeignKey(
+        "logistica_groupaditionalinformation.id"), nullable=True,)
+    destination_id = Column(Integer, ForeignKey(
+        "logistica_groupaditionalinformation.id"), nullable=True,)
     status_rom = Column(String, nullable=False, default="ABERTO", index=True)
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
@@ -28,6 +32,19 @@ class Romaneio(Base):
         foreign_keys=[location_id],
         lazy="joined",
     )
+
+    origin = relationship(
+        "Location",
+        foreign_keys=[origin_id],
+        lazy="joined",
+    )
+
+    destination = relationship(
+        "Location",
+        foreign_keys=[destination_id],
+        lazy="joined",
+    )
+
     client = relationship(
         "Client",
         foreign_keys=[client_id],

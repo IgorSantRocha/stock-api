@@ -10,7 +10,7 @@ from crud.crud_romaneio import romaneio_crud as romaneio
 from crud.crud_item import item as item_crud
 from crud.crud_client import client_crud
 from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse, RomaneioItemUpdateKit
-from schemas.romaneio_schema import RomaneioCreateV2, RomaneioUpdate, RomaneioInDbBase, RomaneioCreate
+from schemas.romaneio_schema import RomaneioCreateV2, RomaneioUpdate, RomaneioInDbBase, RomaneioCreate, RomaneioCreateClient
 
 from services.romaneio import RomaneioItemService
 
@@ -118,7 +118,7 @@ async def insert_items_romaneio(
 async def create_romaneio(
         *,
         db: Session = Depends(deps.get_db_psql),
-        romaneio_in: RomaneioCreateV2,
+        romaneio_in: RomaneioCreateClient,
 ) -> Any:
     """
     # Cria um novo romaneio

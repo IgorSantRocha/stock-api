@@ -1,7 +1,9 @@
 import datetime
 from typing import Optional
 from zoneinfo import ZoneInfo
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel, field_serializer, Field
+
+from schemas.movement_schema import MovementType
 
 
 class RomaneioBase(BaseModel):
@@ -22,6 +24,22 @@ class RomaneioCreate(BaseModel):
 class RomaneioCreateV2(BaseModel):
     created_by: str
     location_id: int
+    client_id: int
+    origin_id: int
+    destination_id: int
+
+
+class PayloadRomaneioCreateV2(BaseModel):
+    created_by: str
+    location_id: int
+    client_name: str
+    origin_id: int
+    destination_id: int
+
+
+class RomaneioCreateClient(BaseModel):
+    created_by: str
+    location_id: int
     client_name: str
     # Se no create você quiser deixar o status fixo como default (sem aceitar override),
     # pode até remover `status_rom` daqui.
@@ -31,6 +49,7 @@ class RomaneioUpdate(BaseModel):
     # No update geralmente todos os campos são opcionais (PATCH style)
     status_rom: Optional[str] = None
     update_by: Optional[str] = None
+    updated_at: Optional[datetime.datetime] = None
 
 
 class RomaneioInDbBase(RomaneioBase):
@@ -39,6 +58,8 @@ class RomaneioInDbBase(RomaneioBase):
     update_at: Optional[datetime.datetime] = None
     romaneio_number: str
     location_id: int
+    origin_id: Optional[int] = None
+    destination_id: Optional[int] = None
 
     @field_serializer("created_at", "update_at", when_used="always")
     def serialize_dt(self, dt: datetime.datetime | None):
@@ -55,3 +76,22 @@ class RomaneioInDbBase(RomaneioBase):
 
 class Romaneio(RomaneioInDbBase):
     pass
+
+
+class RomaneioFinisheData(BaseModel):
+    finished_by: str
+    finished_at: Optional[datetime.datetime] = None
+    movement_type: MovementType = Field(
+        ...,
+        description="Tipo da movimentação (IN, OUT, TRANSFER, ADJUST, RETURN, PICK, PACK)",
+        example="RETURN"
+    )
+    external_order_number: Optional[str] = None
+    # client_name: str
+
+
+class RomaneioFineshedResponse(BaseModel):
+    romaneio_number: str
+    status_rom: str
+    finished_at: datetime.datetime
+    description: Optional[str] = None

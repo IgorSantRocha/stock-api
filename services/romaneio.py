@@ -13,13 +13,15 @@ from schemas.romaneio_item_schema import RomaneioItemResponse, RomaneioItemVolum
 
 
 from api import deps
+from schemas.romaneio_schema import RomaneioInDbBase
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 class RomaneioItemService:
-    def build_romaneio_response(self, romaneio_list, location_id: int, status_rom=None, show_products: bool = False):
+
+    def build_romaneio_response(self, romaneio_list, romaneio: RomaneioInDbBase, show_products: bool = False):
         volumes_dict = {}
 
         for idx, item in enumerate(romaneio_list, start=1):
@@ -61,8 +63,13 @@ class RomaneioItemService:
 
         return RomaneioItemResponse(
             romaneio=str(romaneio_list[0].romaneio.romaneio_number),
-            status=status_rom,
-            location_id=location_id,
+            status=romaneio.status_rom,
+            location_id=romaneio.location_id,
+            location=romaneio.location.nome if romaneio.location else None,
+            origin_id=romaneio.origin_id,
+            origin=romaneio.origin.nome if romaneio.origin else None,
+            destination_id=romaneio.destination_id,
+            destination=romaneio.destination.nome if romaneio.destination else None,
             volums=volumes
         )
 
@@ -85,6 +92,8 @@ class RomaneioItemService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Romaneio inativo (Só é permitido inserir itens em romaneios com status 'ABERTO')",
             )
+        # faço upper no serial para evitar problemas com letras minusculas
+        item.serial = item.serial.upper()
         if item.location_id != 0:
             _filters = {
                 'item.serial': {'operator': '==', 'value': item.serial},
@@ -169,7 +178,7 @@ class RomaneioItemService:
 
         # consulto o romaneio atualizado e retorno a lista de items atrelados a ele
         romaneio_list = await romaneio_item.get_multi_filter(db=db, filterby="romaneio_id", filter=existing_romaneio.id)
-        return self.build_romaneio_response(romaneio_list, existing_romaneio.location_id, existing_romaneio.status_rom)
+        return self.build_romaneio_response(romaneio_list, existing_romaneio)
 
     async def consulta_romaneio(self, db: Session, romaneio_in: str, location_id: int = 0, show_products: bool = False):
         logger.info("Consulta o romaneio")
@@ -205,6 +214,11 @@ class RomaneioItemService:
                 romaneio=romaneio_in,
                 status=existing_romaneio.status_rom,
                 location_id=existing_romaneio.location_id,
+                location=existing_romaneio.location.nome if existing_romaneio.location else None,
+                origin_id=existing_romaneio.origin_id,
+                origin=existing_romaneio.origin.nome if existing_romaneio.origin else None,
+                destination_id=existing_romaneio.destination_id,
+                destination=existing_romaneio.destination.nome if existing_romaneio.destination else None,
                 volums=[]
             )
-        return self.build_romaneio_response(romaneio_list, existing_romaneio.location_id, existing_romaneio.status_rom, show_products)
+        return self.build_romaneio_response(romaneio_list, existing_romaneio, show_products)
