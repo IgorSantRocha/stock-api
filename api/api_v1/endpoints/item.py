@@ -13,7 +13,7 @@ from crud.crud_movement import movement
 from crud.crud_item import item
 from schemas.item_resume_schema import PaStockResumeSchema, ResumeExportSchema
 
-from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase, ItemInDbListBaseCielo
+from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemInRetornoPickingBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase, ItemInDbListBaseCielo
 
 
 from api import deps
@@ -585,6 +585,7 @@ async def read_item(
     _item.produtct_category = _item.product.category
     _item.last_movement_in_date = _item.last_in_movement.created_at if _item.last_in_movement else None
     _item.stock_type = _item.last_in_movement.origin.stock_type if _item.last_in_movement else None
+
     return _item
 
 
@@ -647,4 +648,50 @@ async def put_item(
 
     logger.info("Atualizando item...")
     _item = await item.update(db=db, db_obj=_item, obj_in=payload)
+    return _item
+
+
+@router.get("/delivery/{serial}", response_model=ItemInRetornoPickingBase)
+async def read_item(
+        client: str,
+        serial: str,
+        db: Session = Depends(deps.get_db_psql)
+) -> Any:
+    """
+    #Consulta para uso do retorno do picking
+    """
+    logger.info("Consultando products por client...")
+    filters = {
+        'serial': {'operator': '==', 'value': serial},
+        'product.client.client_code': {'operator': '==', 'value': client}
+    }
+
+    _item = await item.get_last_by_filters(
+        db=db,
+        filters=filters,
+    )
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
+        )
+
+    _item.product_sku = _item.product.sku
+    _item.product_description = _item.product.description
+    _item.produtct_category = _item.product.category
+    if _item.product.category == 'POS':
+        _item.required_chip = True
+    # verifico se o item possui extra_info preenchido com {"integration-ip": {"original_code": "207"}}
+    if _item.required_chip and _item.last_in_movement.extra_info and 'integration-ip' in _item.last_in_movement.extra_info and 'original_code' in _item.last_in_movement.extra_info['integration-ip']:
+        chip_item = await item.get_last_by_filters(
+            db=db,
+            filters={
+                'product.client.client_code': {'operator': '==', 'value': 'cielo'},
+                'product.category': {'operator': '==', 'value': 'CHIP'},
+                'last_out_movement.order_number': {'operator': '==', 'value': _item.last_in_movement.order_number}
+            }
+        )
+        if chip_item:
+            _item.chip_serial = chip_item.serial
+
     return _item

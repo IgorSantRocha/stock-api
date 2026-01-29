@@ -152,3 +152,17 @@ class ItemPedidoInDbBase(ItemBase):
 
 class Item(ItemInDbBase):
     pass
+
+
+class ItemInRetornoPickingBase(BaseModel):
+    serial: str
+    status: ItemStatus = Field(
+        ...,
+        description=f"Status atual do item. Opções: {[e.value for e in ItemStatus]}",
+        example=ItemStatus.IN_DEPOT
+    )
+    product_sku: str
+    product_description: str
+    produtct_category: str
+    chip_serial: Optional[str] = None
+    required_chip: Optional[bool] = False

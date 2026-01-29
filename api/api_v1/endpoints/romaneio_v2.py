@@ -36,7 +36,7 @@ async def create_romaneio(
     _client = await client_crud.get_first_by_filter(db=db, filterby="client_code", filter=romaneio_in.client_name)
     new_rom = RomaneioCreateV2(
         client_id=_client.id,
-        location_id=romaneio_in.location_id,
+        location_id=romaneio_in.origin_id if romaneio_in.location_id == 0 else romaneio_in.location_id,
         created_by=romaneio_in.created_by,
         origin_id=romaneio_in.origin_id,
         destination_id=romaneio_in.destination_id
