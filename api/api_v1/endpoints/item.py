@@ -573,7 +573,7 @@ async def read_item(
         db=db,
         filters=filters,
     )
-    if not item:
+    if not _item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
@@ -670,7 +670,7 @@ async def read_item(
         db=db,
         filters=filters,
     )
-    if not item:
+    if not _item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
@@ -679,8 +679,8 @@ async def read_item(
     _item.product_sku = _item.product.sku
     _item.product_description = _item.product.description
     _item.produtct_category = _item.product.category
-    if _item.product.category == 'POS':
-        _item.required_chip = True
+
+    _item.required_chip = True if _item.product.category != 'PINPAD' else False
     # verifico se o item possui extra_info preenchido com {"integration-ip": {"original_code": "207"}}
     if _item.required_chip and _item.last_in_movement.extra_info and 'integration-ip' in _item.last_in_movement.extra_info and 'original_code' in _item.last_in_movement.extra_info['integration-ip']:
         chip_item = await item.get_last_by_filters(

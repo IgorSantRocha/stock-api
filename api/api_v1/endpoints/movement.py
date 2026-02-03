@@ -78,7 +78,7 @@ async def create_movement(
 
 > **Nota:** Use sempre `product_id` quando disponível.
 """
-    if payload.movement_type != 'IN':
+    if payload.movement_type.value != 'IN':
         for item_payload in payload.item:
             _item = await item_crud.get_last_by_filters(
                 db=db,
