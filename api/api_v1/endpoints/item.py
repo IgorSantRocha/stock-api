@@ -411,8 +411,8 @@ async def export_items_by_client(
         status: str,
         db: Session = Depends(deps.get_db_psql),
         stock_type: str = None,
-        offset: int = 0,
-        limit: int = 100,
+        # offset: int = 0,
+        limit: int = 5000,
         locations_ids: Annotated[
             list[int] | None,
             Query(description="IDs das locations (pode repetir parâmetro)")
@@ -456,7 +456,7 @@ async def export_items_by_client(
         order_by="created_at",
         order_desc=True,
         distinct_on_id=True,  # ativa DISTINCT ON (Item.id)
-        offset=offset,
+        # offset=offset,
         limit=limit,
     )
     from_locations_str = ''
@@ -660,6 +660,8 @@ async def read_item(
     """
     #Consulta para uso do retorno do picking
     """
+    # Rodo o upper do serial para ficar tudo caixa alta
+    serial = serial.upper()
     logger.info("Consultando products por client...")
     filters = {
         'serial': {'operator': '==', 'value': serial},

@@ -118,7 +118,8 @@ class MovementService:
                 status_code=status.HTTP_424_FAILED_DEPENDENCY,
                 detail=f'Item {payload.item.serial} não encontrado. Para movimentações diferentes de IN, o item deve existir.'
             )
-        if payload.movement_type.value not in ['IN', 'COLLECTED'] and _item.status != 'IN_DEPOT':
+
+        if payload.movement_type.value not in ['IN', 'COLLECTED', 'DELIVERY'] and _item.status != 'IN_DEPOT':
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f'Item ({_item.serial}) com status ({_item.status}) inválido para esta movimentação.'
@@ -144,7 +145,7 @@ class MovementService:
                         db=db,
                         id=payload.item.product_id
                     )
-                    if product_item.category != 'CHIP':
+                    if not product_item or product_item.category != 'CHIP':
                         # cria serial provisório e estoura erro adicionando no detail um dicioário com o erro e o serial provisório
                         logger.error(f"Erro na consulta síncrona: {e}")
                         _provisional_serial = await self.create_provisional_serial(db=db, payload=payload)

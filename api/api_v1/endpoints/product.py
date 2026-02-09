@@ -72,7 +72,7 @@ async def create_product(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Cliente {product_in.client_id} não existe")
 
-    if product_in.category.upper() != 'CHIP' and client.client_code == 'cielo' and (not hasattr(product_in.extra_info, 'extra_info') or not hasattr(product_in.extra_info, 'measures')):
+    if product_in.category.upper() != 'CHIP' and client.client_code == 'cielo' and (not hasattr(product_in, 'extra_info') or 'measures' not in product_in.extra_info):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Para o cliente CIELO, é obrigatório informar as medidas do produto em extra_info.measures")
 
