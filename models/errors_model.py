@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import enum
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, JSON, Enum, UniqueConstraint, func
+    Boolean, Column, Integer, String, DateTime, ForeignKey, JSON, Enum, UniqueConstraint, func
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -27,3 +27,11 @@ class StockErrors(Base):
 
     location_id = Column(Integer, ForeignKey(
         "logistica_groupaditionalinformation.id"), nullable=False, index=True)
+
+    error_origin = Column(String, nullable=False)
+    resolved = Column(Boolean, default=False, nullable=False)
+    resolved_by = Column(String, nullable=True)
+    resolved_at = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )

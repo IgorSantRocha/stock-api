@@ -16,17 +16,16 @@ api_router.include_router(
     client.router, prefix="/v1/clients", tags=["Clientes V1"])
 
 api_router.include_router(
-    origin.router, prefix="/v1/origins", tags=["Origens V1"])
+    product.router, prefix="/v1/products", tags=["Produtos V1"])
 
 api_router.include_router(
-    product.router, prefix="/v1/products", tags=["Produtos V1"])
+    origin.router, prefix="/v1/origins", tags=["Origens V1"])
 
 api_router.include_router(
     movement.router, prefix="/v1/movements", tags=["Movimentos V1"])
 
 api_router.include_router(
     item.router, prefix="/v1/items", tags=["Itens V1"])
-
 
 api_router.include_router(
     romaneio_v2.router, prefix="/v2/romaneios", tags=["Romaneios V2"])

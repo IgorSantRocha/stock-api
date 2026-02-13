@@ -8,6 +8,8 @@ import fastapi
 from fastapi.responses import StreamingResponse
 import pandas as pd
 from sqlalchemy.orm import Session
+from schemas.consulta_sincrona_schema import ResponseConsultaSincSC
+from services.consulta_sincrona import ConsultaSincrona
 from utils import flatten_dict
 from crud.crud_movement import movement
 from crud.crud_item import item
@@ -677,6 +679,24 @@ async def read_item(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
         )
+
+    if client == 'cielo':
+        cons_sinc_service = ConsultaSincrona()
+        consulta_sincrona: ResponseConsultaSincSC = await cons_sinc_service.executar_by_serial(serial)
+
+        # valido se o depósito do item é o mesmo da consulta síncrona, se não for, retorno erro
+        if _item.location.deposito != consulta_sincrona.LGORT:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Item {serial} está no depósito ({_item.location.deposito}) que é diferente do depósito SAP ({consulta_sincrona.LGORT}).",
+            )
+
+        # valido se o serial está em depósito no SAP. Se não estiver, retorno erro
+        if not (consulta_sincrona.STTXU.strip() == 'DESN' and consulta_sincrona.STTXT.strip() == 'DEPS'):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Item com serial {serial} não está em depósito no SAP. Status SAP: {consulta_sincrona.STTXT} - {consulta_sincrona.STTXU}",
+            )
 
     _item.product_sku = _item.product.sku
     _item.product_description = _item.product.description

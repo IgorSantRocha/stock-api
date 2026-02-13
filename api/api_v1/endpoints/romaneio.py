@@ -114,14 +114,16 @@ async def insert_items_romaneio(
     return romaneio_list
 
 
-@router.post("/", response_model=RomaneioItemResponse)
+@router.post("/", response_model=RomaneioItemResponse, deprecated=True)
 async def create_romaneio(
         *,
         db: Session = Depends(deps.get_db_psql),
         romaneio_in: RomaneioCreateClient,
 ) -> Any:
     """
+    # ❌ Obsoleto: use o novo endpoint `/api/v2/romaneios/`
     # Cria um novo romaneio
+
     """
 
     logger.info("Criando novo romaneio...")
