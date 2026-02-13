@@ -6,13 +6,18 @@ from sqlalchemy.orm import relationship
 from db.base_class import Base
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class ProvisionalSerialItem(Base):
     __tablename__ = "logistic_stock_item_provisional_serial"
     id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),  # ✅ Python
+        server_default=func.now(),
+        nullable=False
+    )
     new_serial_number = Column(String, nullable=False, index=True)
     old_serial_number = Column(String, nullable=True, index=True)
 

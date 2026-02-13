@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import enum
 from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, JSON, Enum, UniqueConstraint, func
@@ -13,7 +14,12 @@ class Item(Base):
     __tablename__ = "logistic_stock_item"
 
     id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),  # ✅ Python
+        server_default=func.now(),
+        nullable=False
+    )
 
     product_id = Column(Integer, ForeignKey(
         "logistic_stock_product.id"), nullable=True, index=True)

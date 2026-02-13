@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, JSON, Enum, func
 )
@@ -30,7 +31,12 @@ class Movement(Base):
 
     extra_info = Column(JSON)
 
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),  # ✅ Python
+        server_default=func.now(),
+        nullable=False
+    )
     created_by = Column(String)
 
     # Relacionamentos

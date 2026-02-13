@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, func, event
 )
@@ -23,8 +24,19 @@ class Romaneio(Base):
     status_rom = Column(String, nullable=False, default="ABERTO", index=True)
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    created_by = Column(String, nullable=False)
-    update_at = Column(DateTime, onupdate=func.now())
+    created_by = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),  # ✅ Python
+        server_default=func.now(),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),           # valor inicial
+        onupdate=lambda: datetime.now(timezone.utc),          # Python side
+        server_default=func.now(),
+        nullable=False
+    )
     update_by = Column(String, nullable=True)
 
     location = relationship(

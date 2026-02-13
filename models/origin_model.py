@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, Index, func
 )
@@ -10,7 +11,12 @@ class OrderOrigin(Base):
     __tablename__ = "logistic_stock_order_origin"
 
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),  # ✅ Python
+        server_default=func.now(),
+        nullable=False
+    )
 
     # Cliente final (Cielo, Claro, etc. — se quiser separar de origin_name)
     # client_name = Column(String(100), nullable=True, index=True)

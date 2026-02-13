@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import enum
 from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, JSON, Enum, UniqueConstraint, func
@@ -20,7 +21,12 @@ class RomaneioItem(Base):
 
     order_number = Column(String, nullable=False)
 
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),  # ✅ Python
+        server_default=func.now(),
+        nullable=False
+    )
     created_by = Column(String, nullable=False)
 
     item = relationship("Item", foreign_keys=[item_id], lazy="selectin")
