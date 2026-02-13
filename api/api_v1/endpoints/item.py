@@ -663,6 +663,13 @@ async def read_item(
     #Consulta para uso do retorno do picking
     """
     # Rodo o upper do serial para ficar tudo caixa alta
+
+    if client != 'cielo':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Endpoint disponível apenas para o cliente CIELO",
+        )
+
     serial = serial.upper()
     logger.info("Consultando products por client...")
     filters = {
@@ -680,23 +687,22 @@ async def read_item(
             detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
         )
 
-    if client == 'cielo':
-        cons_sinc_service = ConsultaSincrona()
-        consulta_sincrona: ResponseConsultaSincSC = await cons_sinc_service.executar_by_serial(serial)
+    cons_sinc_service = ConsultaSincrona()
+    consulta_sincrona: ResponseConsultaSincSC = await cons_sinc_service.executar_by_serial(serial)
 
-        # valido se o depósito do item é o mesmo da consulta síncrona, se não for, retorno erro
-        if _item.location.deposito != consulta_sincrona.LGORT:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Item {serial} está no depósito ({_item.location.deposito}) que é diferente do depósito SAP ({consulta_sincrona.LGORT}).",
-            )
+    # valido se o depósito do item é o mesmo da consulta síncrona, se não for, retorno erro
+    if _item.location.deposito != consulta_sincrona.LGORT:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Item {serial} está no depósito ({_item.location.deposito}) que é diferente do depósito SAP ({consulta_sincrona.LGORT}).",
+        )
 
-        # valido se o serial está em depósito no SAP. Se não estiver, retorno erro
-        if not (consulta_sincrona.STTXU.strip() == 'DESN' and consulta_sincrona.STTXT.strip() == 'DEPS'):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Item com serial {serial} não está em depósito no SAP. Status SAP: {consulta_sincrona.STTXT} - {consulta_sincrona.STTXU}",
-            )
+    # valido se o serial está em depósito no SAP. Se não estiver, retorno erro
+    if not (consulta_sincrona.STTXU.strip() == 'DESN' and consulta_sincrona.STTXT.strip() == 'DEPS'):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Item com serial {serial} não está em depósito no SAP. Status SAP: {consulta_sincrona.STTXT} - {consulta_sincrona.STTXU}",
+        )
 
     _item.product_sku = _item.product.sku
     _item.product_description = _item.product.description
