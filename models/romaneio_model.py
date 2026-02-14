@@ -23,13 +23,14 @@ class Romaneio(Base):
         "logistica_groupaditionalinformation.id"), nullable=True,)
     status_rom = Column(String, nullable=False, default="ABERTO", index=True)
 
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    created_by = Column(
+    created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),  # ✅ Python
         server_default=func.now(),
         nullable=False
     )
+    created_by = Column(String, nullable=False, index=True)
+
     updated_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),           # valor inicial

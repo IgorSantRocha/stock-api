@@ -55,13 +55,13 @@ class RomaneioUpdate(BaseModel):
 class RomaneioInDbBase(RomaneioBase):
     id: int
     created_at: datetime.datetime
-    update_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
     romaneio_number: str
     location_id: int
     origin_id: Optional[int] = None
     destination_id: Optional[int] = None
 
-    @field_serializer("created_at", "update_at", when_used="always")
+    @field_serializer("created_at", "updated_at", when_used="always")
     def serialize_dt(self, dt: datetime.datetime | None):
         if dt is None:
             return None

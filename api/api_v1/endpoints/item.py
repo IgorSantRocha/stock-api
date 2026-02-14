@@ -9,10 +9,13 @@ from fastapi.responses import StreamingResponse
 import pandas as pd
 from sqlalchemy.orm import Session
 from schemas.consulta_sincrona_schema import ResponseConsultaSincSC
+from schemas.errors_stock_schema import StockErrorsCreate
 from services.consulta_sincrona import ConsultaSincrona
+from services.item import ItemService
 from utils import flatten_dict
 from crud.crud_movement import movement
 from crud.crud_item import item
+from crud.crud_errors_stock import errors_stock_crud
 from schemas.item_resume_schema import PaStockResumeSchema, ResumeExportSchema
 
 from schemas.item_schema import ItemCreate, ItemInDbListBase, ItemInRetornoPickingBase, ItemProductUpdate, ItemUpdate, ItemInDbBase, ItemPedidoInDbBase, ItemInDbListBaseCielo
@@ -657,10 +660,11 @@ async def put_item(
 async def read_item(
         client: str,
         serial: str,
+        location_id: int = None,
         db: Session = Depends(deps.get_db_psql)
 ) -> Any:
     """
-    #Consulta para uso do retorno do picking
+    # Consulta para uso do retorno do picking
     """
     # Rodo o upper do serial para ficar tudo caixa alta
 
@@ -669,57 +673,130 @@ async def read_item(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Endpoint disponível apenas para o cliente CIELO",
         )
-
+    error_service = ItemService()
+    error_origin = 'GET/api/v1/delivery/{serial}'
     serial = serial.upper()
-    logger.info("Consultando products por client...")
-    filters = {
-        'serial': {'operator': '==', 'value': serial},
-        'product.client.client_code': {'operator': '==', 'value': client}
-    }
+    try:
+        logger.info("Consultando products por client...")
+        filters = {
+            'serial': {'operator': '==', 'value': serial},
+            'product.client.client_code': {'operator': '==', 'value': client},
+            # 'status': {'operator': '==', 'value': 'IN_DEPOT'}
+        }
 
-    _item = await item.get_last_by_filters(
-        db=db,
-        filters=filters,
-    )
-    if not _item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
-        )
-
-    cons_sinc_service = ConsultaSincrona()
-    consulta_sincrona: ResponseConsultaSincSC = await cons_sinc_service.executar_by_serial(serial)
-
-    # valido se o depósito do item é o mesmo da consulta síncrona, se não for, retorno erro
-    if _item.location.deposito != consulta_sincrona.LGORT:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Item {serial} está no depósito ({_item.location.deposito}) que é diferente do depósito SAP ({consulta_sincrona.LGORT}).",
-        )
-
-    # valido se o serial está em depósito no SAP. Se não estiver, retorno erro
-    if not (consulta_sincrona.STTXU.strip() == 'DESN' and consulta_sincrona.STTXT.strip() == 'DEPS'):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Item com serial {serial} não está em depósito no SAP. Status SAP: {consulta_sincrona.STTXT} - {consulta_sincrona.STTXU}",
-        )
-
-    _item.product_sku = _item.product.sku
-    _item.product_description = _item.product.description
-    _item.produtct_category = _item.product.category
-
-    _item.required_chip = True if _item.product.category != 'PINPAD' else False
-    # verifico se o item possui extra_info preenchido com {"integration-ip": {"original_code": "207"}}
-    if _item.required_chip and _item.last_in_movement.extra_info and 'integration-ip' in _item.last_in_movement.extra_info and 'original_code' in _item.last_in_movement.extra_info['integration-ip']:
-        chip_item = await item.get_last_by_filters(
+        _item = await item.get_last_by_filters(
             db=db,
-            filters={
-                'product.client.client_code': {'operator': '==', 'value': 'cielo'},
-                'product.category': {'operator': '==', 'value': 'CHIP'},
-                'last_out_movement.order_number': {'operator': '==', 'value': _item.last_in_movement.order_number}
-            }
+            filters=filters,
         )
-        if chip_item:
-            _item.chip_serial = chip_item.serial
+        if not _item:
+            error_service = ItemService()
+            erro = StockErrorsCreate(
+                error_origin=error_origin,
+                message_error='Item not found (O serial informado não existe ou não pertence a este cliente)',
+                serial=serial,
+                status='Não localizado',
+                location_id=location_id)
 
+            await error_service.salva_erro(db=db, erro=erro)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item not found (O serial informado não existe ou não pertence a este cliente)",
+            )
+
+        if _item.status != 'IN_DEPOT':
+
+            erro = StockErrorsCreate(
+                error_origin=error_origin,
+                message_error='Serial encontrado, porém não está IN_DEPOT',
+                serial=serial,
+                status=_item.status,
+                location_id=location_id)
+
+            await error_service.salva_erro(db=db, erro=erro)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item com serial {serial} não está com status IN_DEPOT. Status atual: {_item.status}",
+            )
+        if _item.location_id != location_id and location_id != 0:
+
+            erro = StockErrorsCreate(
+                error_origin=error_origin,
+                message_error='Serial encontrado, porém sua location não condiz com a do usuário',
+                serial=serial,
+                status=_item.status,
+                location_id=location_id)
+
+            await error_service.salva_erro(db=db, erro=erro)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item com serial {serial} está localizado na location {_item.location_id} que é diferente da location do retorno do picking {location_id}.",
+            )
+        cons_sinc_service = ConsultaSincrona()
+        consulta_sincrona: ResponseConsultaSincSC = await cons_sinc_service.executar_by_serial(serial)
+
+        # valido se o depósito do item é o mesmo da consulta síncrona, se não for, retorno erro
+        if _item.location.deposito != consulta_sincrona.LGORT:
+
+            erro = StockErrorsCreate(
+                error_origin=error_origin,
+                message_error='Serial encontrado, porém depósito do SAP é diferente do depósito do item no banco',
+                serial=serial,
+                status=_item.status,
+                location_id=location_id)
+            await error_service.salva_erro(db=db, erro=erro)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item {serial} está no depósito ({_item.location.deposito}) que é diferente do depósito SAP ({consulta_sincrona.LGORT}).",
+            )
+
+        # valido se o serial está em depósito no SAP. Se não estiver, retorno erro
+        if not (consulta_sincrona.STTXU.strip() == 'DESN' and consulta_sincrona.STTXT.strip() == 'DEPS'):
+
+            erro = StockErrorsCreate(
+                error_origin=error_origin,
+                message_error=f'Serial encontrado, porém não está em depósito no SAP. Status SAP: {consulta_sincrona.STTXT} - {consulta_sincrona.STTXU}',
+                serial=serial,
+                status=_item.status,
+                location_id=location_id)
+            await error_service.salva_erro(db=db, erro=erro)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item com serial {serial} não está em depósito no SAP. Status SAP: {consulta_sincrona.STTXT} - {consulta_sincrona.STTXU}",
+            )
+
+        _item.product_sku = _item.product.sku
+        _item.product_description = _item.product.description
+        _item.produtct_category = _item.product.category
+
+        _item.required_chip = True if _item.product.category != 'PINPAD' else False
+        # verifico se o item possui extra_info preenchido com {"integration-ip": {"original_code": "207"}}
+        if _item.required_chip and _item.last_in_movement.extra_info and 'integration-ip' in _item.last_in_movement.extra_info and 'original_code' in _item.last_in_movement.extra_info['integration-ip']:
+            chip_item = await item.get_last_by_filters(
+                db=db,
+                filters={
+                    'product.client.client_code': {'operator': '==', 'value': 'cielo'},
+                    'product.category': {'operator': '==', 'value': 'CHIP'},
+                    'last_out_movement.order_number': {'operator': '==', 'value': _item.last_in_movement.order_number}
+                }
+            )
+            if chip_item:
+                _item.chip_serial = chip_item.serial
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(
+            f"Erro ao consultar item para retorno do picking: {str(e)}")
+
+        erro = StockErrorsCreate(
+            error_origin=error_origin,
+            message_error=dict(e),
+            serial=serial,
+            status=_item.status if _item else None,
+            location_id=location_id)
+        await error_service.salva_erro(db=db, erro=erro)
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno ao processar a consulta. Por favor, contate o suporte.",
+        )
     return _item

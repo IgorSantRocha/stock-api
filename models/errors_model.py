@@ -20,7 +20,7 @@ class StockErrors(Base):
         server_default=func.now(),
         nullable=False
     )
-    serial = Column(String, unique=True, index=True, nullable=True)
+    serial = Column(String,  index=True, nullable=True)
     status = Column(String, nullable=False, index=True)
 
     message_error = Column(String, nullable=False)
