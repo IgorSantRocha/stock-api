@@ -695,7 +695,7 @@ async def read_item(
                 message_error='Item not found (O serial informado não existe ou não pertence a este cliente)',
                 serial=serial,
                 status='Não localizado',
-                location_id=location_id)
+                location_id=location_id if location_id != 0 else None)
 
             await error_service.salva_erro(db=db, erro=erro)
             raise HTTPException(
@@ -710,7 +710,7 @@ async def read_item(
                 message_error='Serial encontrado, porém não está IN_DEPOT',
                 serial=serial,
                 status=_item.status,
-                location_id=location_id)
+                location_id=location_id if location_id != 0 else None)
 
             await error_service.salva_erro(db=db, erro=erro)
             raise HTTPException(
@@ -724,7 +724,7 @@ async def read_item(
                 message_error='Serial encontrado, porém sua location não condiz com a do usuário',
                 serial=serial,
                 status=_item.status,
-                location_id=location_id)
+                location_id=location_id if location_id != 0 else None)
 
             await error_service.salva_erro(db=db, erro=erro)
             raise HTTPException(
@@ -742,7 +742,7 @@ async def read_item(
                 message_error='Serial encontrado, porém depósito do SAP é diferente do depósito do item no banco',
                 serial=serial,
                 status=_item.status,
-                location_id=location_id)
+                location_id=location_id if location_id != 0 else None)
             await error_service.salva_erro(db=db, erro=erro)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -757,7 +757,7 @@ async def read_item(
                 message_error=f'Serial encontrado, porém não está em depósito no SAP. Status SAP: {consulta_sincrona.STTXT} - {consulta_sincrona.STTXU}',
                 serial=serial,
                 status=_item.status,
-                location_id=location_id)
+                location_id=location_id if location_id != 0 else None)
             await error_service.salva_erro(db=db, erro=erro)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -792,7 +792,7 @@ async def read_item(
             message_error=dict(e),
             serial=serial,
             status=_item.status if _item else None,
-            location_id=location_id)
+            location_id=location_id if location_id != 0 else None)
         await error_service.salva_erro(db=db, erro=erro)
 
         raise HTTPException(

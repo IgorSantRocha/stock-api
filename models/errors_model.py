@@ -26,7 +26,7 @@ class StockErrors(Base):
     message_error = Column(String, nullable=False)
 
     location_id = Column(Integer, ForeignKey(
-        "logistica_groupaditionalinformation.id"), nullable=False, index=True)
+        "logistica_groupaditionalinformation.id"), nullable=True, index=True)
 
     error_origin = Column(String, nullable=False)
     resolved = Column(Boolean, default=False, nullable=False)
