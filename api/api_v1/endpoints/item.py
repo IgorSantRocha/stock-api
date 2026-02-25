@@ -707,7 +707,7 @@ async def read_item(
 
             erro = StockErrorsCreate(
                 error_origin=error_origin,
-                message_error='Serial encontrado, porém não está IN_DEPOT',
+                message_error=f'Serial encontrado, porém não está IN_DEPOT. Status atual: {_item.status}',
                 serial=serial,
                 status=_item.status,
                 location_id=location_id if location_id != 0 else None)
@@ -721,7 +721,7 @@ async def read_item(
 
             erro = StockErrorsCreate(
                 error_origin=error_origin,
-                message_error='Serial encontrado, porém sua location não condiz com a do usuário',
+                message_error=f'Serial encontrado, porém sua location não condiz com a do usuário. Location_id do item: {_item.location_id}, location_id do pedido: {location_id}',
                 serial=serial,
                 status=_item.status,
                 location_id=location_id if location_id != 0 else None)
@@ -739,7 +739,7 @@ async def read_item(
 
             erro = StockErrorsCreate(
                 error_origin=error_origin,
-                message_error='Serial encontrado, porém depósito do SAP é diferente do depósito do item no banco',
+                message_error=f'Serial encontrado, porém depósito do SAP é diferente do depósito do item no banco. DEPS do Arancia: "{_item.location.deposito}", DEPS do SAP: "{consulta_sincrona.LGORT}"',
                 serial=serial,
                 status=_item.status,
                 location_id=location_id if location_id != 0 else None)
@@ -789,7 +789,7 @@ async def read_item(
 
         erro = StockErrorsCreate(
             error_origin=error_origin,
-            message_error=dict(e),
+            message_error=str(e),
             serial=serial,
             status=_item.status if _item else None,
             location_id=location_id if location_id != 0 else None)

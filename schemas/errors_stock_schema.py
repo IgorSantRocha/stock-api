@@ -11,7 +11,7 @@ class StockErrorsBase(BaseModel):
     serial: str
     status:  Optional[str] = None
     message_error: str
-    location_id: int
+    location_id: Optional[int] = None
     error_origin: str
     resolved: bool = False
     resolved_by: Optional[str] = None

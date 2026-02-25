@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
-    DEBUG: bool = True
+    DEBUG: bool = False
     DESCRIPTION: str = 'Integração Shipment Order Fulfillment'
     if DEBUG:
         ROOT_PATH: str = '/hg-stock'
