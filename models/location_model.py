@@ -7,6 +7,13 @@ from db.base_class import Base
 from sqlalchemy.orm import declarative_base
 
 
+class AranciaGroup(Base):
+    __tablename__ = "auth_group"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+
 class Location(Base):
     __tablename__ = "logistica_groupaditionalinformation"
 
@@ -35,3 +42,10 @@ class Location(Base):
     # tamanho comum p/ e-mail
     email = Column(String(254), nullable=True, index=True)
     responsavel = Column(String(100), nullable=True)
+
+    group_id = Column(Integer, ForeignKey("auth_group.id"), nullable=True)
+    group = relationship(
+        "AranciaGroup",
+        foreign_keys=[group_id],
+        lazy="joined",
+    )

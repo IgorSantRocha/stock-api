@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 # Se já tiver o Enum no seu módulo de modelos, importe-o:
@@ -49,3 +49,16 @@ class LocationInDbBase(LocationBase):
 
 class Location(LocationInDbBase):
     pass
+
+
+class LocationBasic(BaseModel):
+    gay_type: Optional[str] = None
+    nome: Optional[str] = None
+    # função para remover o texto "arancia_" do começo de gay_type
+
+    @field_validator("gay_type", mode="before")
+    @classmethod
+    def remove_arancia_prefix(cls, value):
+        if isinstance(value, str) and value.startswith("arancia_"):
+            return value.replace("arancia_", "", 1)
+        return value

@@ -1,7 +1,7 @@
 from typing import Any, List, Literal
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from crud.crud_origin import origin
 from crud.crud_movement import movement as movement_crud
@@ -10,9 +10,10 @@ from crud.crud_romaneio import romaneio_crud as romaneio
 from crud.crud_item import item as item_crud
 from crud.crud_client import client_crud
 from schemas.item_schema import ItemPayload
+from schemas.location_schema import LocationBasic
 from schemas.movement_schema import MovementBase, MovementCreate, MovementPayload
 from schemas.romaneio_item_schema import RomaneioItemPayload, RomaneioItemCreate, RomaneioItemInDbBase, RomaneioItemResponse, RomaneioItemUpdateKit
-from schemas.romaneio_schema import RomaneioCreateV2, PayloadRomaneioCreateV2, RomaneioFineshedResponse, RomaneioFinisheData, RomaneioInDbBase, RomaneioCreate, RomaneioCreateClient, RomaneioUpdate
+from schemas.romaneio_schema import RomaneioCreateV2, PayloadRomaneioCreateV2, RomaneioFineshedResponse, RomaneioFinisheData, RomaneioInDbBase, RomaneioCreate, RomaneioCreateClient, RomaneioListBase, RomaneioUpdate
 
 from services.romaneio import RomaneioItemService
 from services.movement import MovementService
@@ -158,3 +159,53 @@ async def finish_romaneio(
         description="Romaneio finalizado com sucesso.",
         finished_at=finish_data.finished_at
     )
+
+
+@router.get("/", response_model=List[RomaneioListBase])
+async def read_romaneios(
+        location_id: int = 0,
+        status: Literal['ABERTO', 'PRONTO',
+                        'EM PROCESSAMENTO', 'FECHADO', 'CANCELADO'] = None,
+        db: Session = Depends(deps.get_db_psql),
+        offset: int = 0,
+        limit: int = 100,
+) -> Any:
+    """
+    # Consulta todas as romaneios possíveis, com paginação
+    """
+    logger.info("Consultando romaneios...")
+    if not location_id and location_id != 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="É necessário informar o location_id")
+    filters = []
+    if status:
+        filters.append(
+            {"field": "status_rom", "operator": "=", "value": status})
+
+    if location_id != 0:
+        filters.append(
+            {"field": "location_id", "operator": "=", "value": location_id})
+
+    _romaneios = await romaneio.get_multi_filters(
+        db=db,
+        filters=filters,
+        offset=offset,
+        limit=limit
+    ) if location_id != 0 or status else await romaneio.get_multi(db=db, skip=offset, limit=limit)
+
+    # Normalizo a lista para o schema RomaneioListBase
+    romaneio_response_list = []
+    for r in _romaneios:
+        romaneio_response_list.append(RomaneioListBase(
+            romaneio_number=r.romaneio_number,
+            status_rom=r.status_rom,
+            client_name=r.client.client_code if r.client else None,
+            created_at=r.created_at,
+            location=LocationBasic(
+                gay_type=r.location.group.name, nome=r.location.nome) if r.location else None,
+            origin=LocationBasic(
+                gay_type=r.origin.group.name, nome=r.origin.nome) if r.origin else None,
+            destination=LocationBasic(
+                gay_type=r.destination.group.name, nome=r.destination.nome) if r.destination else None
+        ))
+    return romaneio_response_list

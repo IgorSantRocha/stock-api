@@ -2,6 +2,7 @@ import datetime
 from typing import Optional
 from zoneinfo import ZoneInfo
 from pydantic import BaseModel, field_serializer, Field
+from schemas.location_schema import LocationBasic
 
 from schemas.movement_schema import MovementType
 
@@ -95,3 +96,19 @@ class RomaneioFineshedResponse(BaseModel):
     status_rom: str
     finished_at: datetime.datetime
     description: Optional[str] = None
+
+
+class RomaneioListBase(BaseModel):
+    romaneio_number: str
+    status_rom: str
+    client_name: str
+    created_at: datetime.datetime
+    location: Optional[LocationBasic] = None
+    origin: Optional[LocationBasic] = None
+    destination: Optional[LocationBasic] = None
+
+    @field_serializer("created_at", when_used="always")
+    def serialize_dt(self, dt: datetime.datetime):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
