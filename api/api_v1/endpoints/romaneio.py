@@ -45,6 +45,7 @@ async def read_romaneios(
 @router.get("/{romaneio_in}", response_model=RomaneioItemResponse)
 async def read_romaneio(
         romaneio_in: str,
+        reverse: bool = True,
         location_id: int = None,
         db: Session = Depends(deps.get_db_psql)
 ) -> Any:
@@ -57,7 +58,7 @@ async def read_romaneio(
     if not location_id and location_id != 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="É necessário informar o location_id")
-    service = RomaneioItemService()
+    service = RomaneioItemService(reverse=reverse)
 
     existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in, location_id=location_id)
     return existing_romaneio
@@ -66,6 +67,7 @@ async def read_romaneio(
 @router.get("/{romaneio_in}/with-product", response_model=RomaneioItemResponse)
 async def read_romaneio(
         romaneio_in: str,
+        reverse: bool = True,
         location_id: int = None,
         db: Session = Depends(deps.get_db_psql)
 ) -> Any:
@@ -78,7 +80,7 @@ async def read_romaneio(
     if not location_id and location_id != 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="É necessário informar o location_id")
-    service = RomaneioItemService()
+    service = RomaneioItemService(reverse=reverse)
 
     existing_romaneio = await service.consulta_romaneio(db=db, romaneio_in=romaneio_in, location_id=location_id, show_products=True)
 

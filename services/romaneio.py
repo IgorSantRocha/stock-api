@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class RomaneioItemService:
+    def __init__(self, reverse: bool = True) -> None:
+        self.reverse = reverse
 
     def build_romaneio_response(self, romaneio_list, romaneio: RomaneioInDbBase, show_products: bool = False):
         volumes_dict = {}
@@ -48,10 +50,10 @@ class RomaneioItemService:
 
         volumes = []
         # 🔽 Ordena volumes em ordem decrescente
-        for vol_num, kits_dict in sorted(volumes_dict.items(), key=lambda x: x[0], reverse=True):
+        for vol_num, kits_dict in sorted(volumes_dict.items(), key=lambda x: x[0], reverse=self.reverse):
             kits = []
             # 🔽 Ordena kits em ordem decrescente
-            for kit_num, kit_items in sorted(kits_dict.items(), key=lambda x: x[0], reverse=True):
+            for kit_num, kit_items in sorted(kits_dict.items(), key=lambda x: x[0], reverse=self.reverse):
                 kits.extend(kit_items)
 
             volumes.append(
