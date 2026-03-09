@@ -19,7 +19,7 @@ class LocationBase(BaseModel):
     cidade: Optional[str] = None
 
     UF: Optional[str] = None
-    estado: Optional[str] = None
+    # estado: Optional[str] = None
     CEP: Optional[str] = None
 
     telefone1: Optional[str] = None

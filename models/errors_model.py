@@ -35,3 +35,4 @@ class StockErrors(Base):
         DateTime(timezone=True),
         nullable=True
     )
+    resolved_message = Column(String, nullable=True)

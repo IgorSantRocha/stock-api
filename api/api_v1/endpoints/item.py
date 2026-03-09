@@ -10,6 +10,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from schemas.consulta_sincrona_schema import ResponseConsultaSincSC
 from schemas.errors_stock_schema import StockErrorsCreate
+from schemas.product_schema import VolumeProductSchema
 from services.consulta_sincrona import ConsultaSincrona
 from services.item import ItemService
 from utils import flatten_dict
@@ -190,7 +191,7 @@ Ideal para dashboards e relatórios.
     response_model=Any,
     summary="Resumo agregado de estoque por PA"
 )
-async def read_items_by_client_resume(
+async def export_items_by_client_resume(
     client: str,
     status: str,
     agregate_by: Literal['product', 'ztipo'] = 'product',
@@ -559,8 +560,46 @@ async def read_items_by_client(
     return itens
 
 
+@router.get("/volumn_product_for_dce", response_model=List[VolumeProductSchema])
+async def read_volumn_product_for_dce(
+        seriais: List[str] = Query(
+            ..., description="Lista de seriais para consulta. Exemplo: ?seriais=SERIAL1&seriais=SERIAL2"),
+        location_id: int = 0,
+        db: Session = Depends(deps.get_db_psql)
+) -> Any:
+    filters = [
+        {"field": "serial", "operator": "in", "value": seriais},
+        # {"field": "status", "operator": "=", "value": "IN_DEPOT"},
+    ]
+    if location_id != 0:
+        filters.append(
+            {"field": "location_id", "operator": "==", "value": location_id})
+
+    items = await item.get_multi_filters(
+        db=db,
+        filters=filters,
+    )
+    if len(items) < len(seriais):
+        found_serials = {_item.serial for _item in items}
+        missing_serials = set(seriais) - found_serials
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Items com seriais {', '.join(missing_serials)} não encontrados",
+        )
+    for _item in items:
+        if _item.status != 'IN_DEPOT':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Item com serial {_item.serial} não está com status IN_DEPOT",
+            )
+
+    item_service = ItemService()
+    volume_product_array = item_service.build_volume_product_array(items)
+    return volume_product_array
+
+
 @router.get("/{serial}", response_model=ItemInDbListBase)
-async def read_item(
+async def read_item_serial(
         client: str,
         serial: str,
         db: Session = Depends(deps.get_db_psql)
@@ -595,7 +634,7 @@ async def read_item(
 
 
 @router.get("/{serial}/pedido", response_model=ItemPedidoInDbBase)
-async def read_item(
+async def read_item_serial_pedido(
         client: str,
         serial: str,
         db: Session = Depends(deps.get_db_psql)
@@ -637,7 +676,7 @@ async def read_item(
 
 
 @router.put(path="/{id}", response_model=ItemInDbBase)
-async def put_item(
+async def put_item_id(
         *,
         db: Session = Depends(deps.get_db_psql),
         id: int,
@@ -657,7 +696,7 @@ async def put_item(
 
 
 @router.get("/delivery/{serial}", response_model=ItemInRetornoPickingBase)
-async def read_item(
+async def read_item_delivery(
         client: str,
         serial: str,
         location_id: int = None,

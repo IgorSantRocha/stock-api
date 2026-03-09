@@ -33,7 +33,7 @@ class Location(Base):
 
     # Mantive ambos (como no Django). Se forem redundantes, escolha um só.
     UF = Column(String(2), nullable=True, index=True)
-    estado = Column(String(2), nullable=True, index=True)
+    # estado = Column(String(2), nullable=True, index=True)
 
     CEP = Column(String(10), nullable=True, index=True)
 

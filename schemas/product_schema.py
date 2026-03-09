@@ -54,3 +54,12 @@ class ProductInDbBase(ProductBase):
 class Product(ProductInDbBase):
     """Schema retornado pela API ao consultar um produto"""
     pass
+
+
+class VolumeProductSchema(BaseModel):
+    itemDescription: str
+    ncmCode: str
+    quantity: int
+    unitPrice: float
+    totalPrice: float
+    additionalProductInfo: Optional[str] = ''
